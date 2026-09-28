@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isStaff() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/staff/$(request.auth.uid));
+    }
+    function isParentOf(email) {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == email;
+    }
+
+    // Staff list: each staff member may read only their own entry. Add entries by hand in the console.
+    match /staff/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /kids/{id} {
+      allow read: if isStaff() || isParentOf(resource.data.parentEmail);
+      allow write: if isStaff();
+    }
+
+    match /log/{id} {
+      allow read: if isStaff() || isParentOf(resource.data.parentEmail);
+      allow create: if isStaff();
+      allow update, delete: if false;
+    }
+  }
+}
