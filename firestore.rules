@@ -6,16 +6,23 @@ service cloud.firestore {
       return request.auth != null
         && exists(/databases/$(database)/documents/staff/$(request.auth.uid));
     }
+    function isAdmin() {
+      return isStaff()
+        && get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.role == 'admin';
+    }
     function isParent(emails) {
       return request.auth != null
         && request.auth.token.email_verified == true
         && request.auth.token.email in emails;
     }
 
-    // Each staff member may read only their own entry. Add entries by hand in the console.
+    // Staff list. Admins manage it from the app. Make the first admin by hand:
+    // set role = "admin" on your own document in the console.
     match /staff/{uid} {
-      allow read: if request.auth != null && request.auth.uid == uid;
-      allow write: if false;
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create: if isAdmin() && request.resource.data.role == 'staff';
+      allow update: if false;
+      allow delete: if isAdmin() && request.auth.uid != uid;
     }
 
     match /kids/{id} {
