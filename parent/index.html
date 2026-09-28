@@ -78,7 +78,8 @@ const firebaseConfig={
   projectId:"school-smart-attendance-52cbf",
   appId:"1:1069393649004:web:dafcf9afdf265f9c83e749"
 };
-const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+// Named app so this session is separate from the staff app (same site, same Firebase project).
+const app=initializeApp(firebaseConfig,'parent'),auth=getAuth(app),db=getFirestore(app);
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const tm=t=>new Date(t).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'});
