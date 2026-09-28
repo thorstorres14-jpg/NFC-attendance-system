@@ -87,6 +87,17 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(-
   <div class="row" style="margin-bottom:10px"><strong id="logHead">Today</strong><button class="btn alt sm" id="csvBtn">Copy as CSV</button></div>
   <div id="logList"></div>
 </section>
+
+<section id="tab-staff">
+  <div class="card">
+    <strong>Add staff</strong>
+    <p class="note">Creates a staff login. Give the person the email and a temporary password.</p>
+    <label for="sEmail">Email</label><input id="sEmail" type="email" autocomplete="off">
+    <label for="sPw">Temporary password (at least 6 characters)</label><input id="sPw" type="text" autocomplete="off">
+    <p><button class="btn" id="addStaff">Add staff</button></p>
+  </div>
+  <div id="staffList"></div>
+</section>
 </div>
 </main>
 
@@ -94,13 +105,14 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(-
   <button role="tab" aria-selected="true" data-tab="tap">Tap</button>
   <button role="tab" aria-selected="false" data-tab="kids">Children</button>
   <button role="tab" aria-selected="false" data-tab="log">Log</button>
+  <button role="tab" aria-selected="false" data-tab="staff" id="navStaff" hidden>Staff</button>
 </nav>
 <div id="toast" role="status"></div>
 
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {getFirestore,collection,addDoc,updateDoc,deleteDoc,getDoc,getDocs,writeBatch,doc,query,where,orderBy,onSnapshot} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getFirestore,collection,addDoc,updateDoc,deleteDoc,getDoc,getDocs,writeBatch,setDoc,doc,query,where,orderBy,onSnapshot} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 // Paste the config from the Firebase console here (Project settings > Your apps > Web app).
 const firebaseConfig={
@@ -110,9 +122,10 @@ const firebaseConfig={
   appId:"1:1069393649004:web:dafcf9afdf265f9c83e749"
 };
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+const auth2=getAuth(initializeApp(firebaseConfig,'creator')); // used only to create staff logins without signing you out
 
 const COOLDOWN=60000;
-let kids=[],logs=[],assigning=null,lastTap={},unsub=[];
+let kids=[],logs=[],assigning=null,lastTap={},unsub=[],staffList=[];
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=t=>new Date(t).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'});
@@ -127,13 +140,15 @@ $('inBtn').onclick=()=>signInWithEmailAndPassword(auth,$('em').value.trim(),$('p
 $('outBtn').onclick=()=>signOut(auth);
 onAuthStateChanged(auth,async user=>{
   unsub.forEach(u=>u());unsub=[];
-  if(user){let ok=false;try{ok=(await getDoc(doc(db,'staff',user.uid))).exists()}catch(e){}
+  let admin=false;
+  if(user){let ok=false;try{const sd=await getDoc(doc(db,'staff',user.uid));ok=sd.exists();admin=ok&&sd.data().role==='admin'}catch(e){}
     if(!ok){$('loginMsg').textContent='This account is not a staff account. Check the staff document in Firestore: its Document ID must be the User UID of this account.';signOut(auth);return}$('loginMsg').textContent=''}
-  $('login').hidden=!!user;$('app').hidden=!user;$('nav').hidden=!user;$('outBtn').hidden=!user;
+  $('login').hidden=!!user;$('app').hidden=!user;$('nav').hidden=!user;$('outBtn').hidden=!user;$('navStaff').hidden=!admin;
   if(!user)return;
   const start=new Date();start.setHours(0,0,0,0);
   unsub.push(onSnapshot(collection(db,'kids'),s=>{kids=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>toast('Could not load the list of children.')));
   unsub.push(onSnapshot(query(collection(db,'log'),where('time','>=',start.getTime()),orderBy('time')),s=>{logs=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>toast('Could not load the log.')));
+  if(admin)unsub.push(onSnapshot(collection(db,'staff'),s=>{staffList=s.docs.map(d=>({id:d.id,...d.data()}));renderStaff()},()=>toast('Could not load the staff list.')));
 });
 
 // --- NFC scanning
@@ -228,6 +243,23 @@ $('simBtn').onclick=async()=>{
 $('csvBtn').onclick=()=>{
   const rows=['Name,Type,Time'].concat(logs.map(l=>`"${l.name}",${l.type==='in'?'Arrived':'Left'},${new Date(l.time).toLocaleString('en-PH')}`)).join('\n');
   navigator.clipboard&&navigator.clipboard.writeText(rows).then(()=>toast('CSV copied'),()=>toast('Could not copy'))};
+
+// --- staff management (admins only)
+function renderStaff(){
+  const me=auth.currentUser&&auth.currentUser.uid;
+  $('staffList').innerHTML=staffList.length?staffList.map(x=>`<div class="card"><div class="row"><strong>${esc(x.email||x.id)}</strong><span class="tag ${x.role==='admin'?'ok':''}">${esc(x.role||'staff')}</span></div>
+   <div class="row" style="margin-top:8px">${x.email?`<button class="btn alt sm" data-r="${esc(x.email)}">Send password reset</button>`:'<span></span>'}${x.id===me?'<span class="note">You</span>':`<button class="btn alt sm" data-x="${x.id}">Remove</button>`}</div></div>`).join(''):'<p class="note">No staff yet.</p>';
+  document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>sendPasswordResetEmail(auth,b.dataset.r).then(()=>toast('Reset email sent.'),()=>toast('Could not send the reset email.')));
+  document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{if(confirm('Remove this staff member? They will lose access.'))deleteDoc(doc(db,'staff',b.dataset.x)).catch(()=>toast('Could not remove.'))})}
+$('addStaff').onclick=async()=>{
+  const email=$('sEmail').value.trim().toLowerCase(),pw=$('sPw').value;
+  if(!email||pw.length<6){toast('Enter an email and a password of at least 6 characters.');return}
+  try{
+    const c=await createUserWithEmailAndPassword(auth2,email,pw);
+    await setDoc(doc(db,'staff',c.user.uid),{role:'staff',email});
+    $('sEmail').value='';$('sPw').value='';toast('Staff added.');
+  }catch(e){toast(e.code==='auth/email-already-in-use'?'That email already has an account. Use a different email.':'Could not add staff ('+(e.code||e.message)+').')}
+  finally{try{await signOut(auth2)}catch(x){}}};
 </script>
 </body>
 </html>
