@@ -112,6 +112,7 @@ main:has(#tab-sf2.on){max-width:1180px}
 .sfsig2{display:flex;justify-content:space-around;margin-top:26px;break-inside:avoid}.sfsig2>div{text-align:center;min-width:220px}.sfsig2 b{display:block;margin-top:22px;text-transform:uppercase}
 /* SF2 guideline formulas: same column widths on every row, bar as wide as its longest line */
 .fr{grid-template-columns:1.4em 20em minmax(0,1fr) 2.6em;font-size:.86em;gap:4px}.fr>span:nth-child(2){text-align:left;white-space:nowrap}
+.sfg>div.gl{min-width:0}.sf.sfsum{table-layout:fixed;width:100%}.sfsum td,.sfsum th{overflow-wrap:anywhere}.gr{min-width:0;box-sizing:border-box}.sfg{max-width:100%}.fr{min-width:0}
 .fr .frac{display:grid;justify-self:center;width:max-content;max-width:100%;text-align:center}.fr .frac b{padding:0 6px}.fr>span:last-child{text-align:left}
 /* Add/Edit child form rows */
 .frm{display:grid;gap:8px}.frm>div{min-width:0}.frm.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -565,7 +566,7 @@ function drawSF2(){sfMode='m';
   <p><b>b. Individual-Related Factors</b><br>b.1. Illness<br>b.2. Overage<br>b.3. Death<br>b.4. Drug Abuse<br>b.5. Poor academic performance<br>b.6. Lack of interest/Distractions<br>b.7. Hunger/Malnutrition</p>
   <p><b>c. School-Related Factors</b><br>c.1. Teacher Factor<br>c.2. Physical condition of classroom<br>c.3. Peer influence</p>
   <p><b>d. Geographic/Environmental</b><br>d.1. Distance between home and school<br>d.2. Armed conflict (incl. Tribal wars &amp; clanfeuds)<br>d.3. Calamities/Disasters</p><p><b>e. Financial-Related</b><br>e.1. Child labor, work</p><p><b>f. Others (Specify)</b></p></div>
-  <div class="gr"><table class="sf sfsum"><tr><td rowspan="2" class="mo">Month : ${monN}</td><td rowspan="2" class="mo">No. of Days of<br>Classes: ${sd}</td><th colspan="3">Summary</th></tr><tr><th>M</th><th>F</th><th>TOTAL</th></tr>${summ}</table>
+  <div class="gr"><table class="sf sfsum"><colgroup><col style="width:25%"><col style="width:25%"><col style="width:16.6%"><col style="width:16.6%"><col style="width:16.8%"></colgroup><tr><td rowspan="2" class="mo">Month : ${monN}</td><td rowspan="2" class="mo">No. of Days of<br>Classes: ${sd}</td><th colspan="3">Summary</th></tr><tr><th>M</th><th>F</th><th>TOTAL</th></tr>${summ}</table>
   <p class="cert">I certify that this is a true and correct report.</p><div class="sg"><div class="pn">${v('sfAdv')}</div><div class="ln">(Signature of Adviser over Printed Name)</div></div>
   <p class="cert">Attested by:</p><div class="sg"><div class="pn">${v('sfHead')}</div><div class="ln">(Signature of School Head over Printed Name)</div></div></div></div></div></div>`;
   {const sv=$('adjSave');if(sv)sv.onclick=saveAdj;const bx=$('adjBox');if(bx)bx.ontoggle=()=>{sfEditOpen=bx.open;if(bx.open)sfInitEdit()};
