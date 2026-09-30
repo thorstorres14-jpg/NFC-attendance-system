@@ -288,7 +288,7 @@ function render(){fillSec();renderSecs();
 
 $('simBtn').onclick=async()=>{
   const k=kids.find(x=>x.id===$('simKid').value);if(!k){toast('Add a child first.');return}
-  if(!k.uid){k.uid='TEST-'+k.id;await updateDoc(doc(db,'kids',k.id),{uid:k.uid})}
+  if(!k.uid){if(myRole==='gate'){toast('This child has no card yet. Ask an admin to link one.');return}k.uid='TEST-'+k.id;await updateDoc(doc(db,'kids',k.id),{uid:k.uid})}
   handleTap(k.uid)};
 
 $('csvBtn').onclick=()=>{
