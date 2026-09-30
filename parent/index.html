@@ -38,9 +38,17 @@ input{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);
 </head>
 <body>
 <main>
-<div class="row"><h1>Tap-In Parents</h1><button class="btn alt sm" id="outBtn" hidden>Log out</button></div>
+<div class="row"><h1>Tap-In Parents</h1><span><button class="btn alt sm" id="pwBtn" hidden>Password</button> <button class="btn alt sm" id="outBtn" hidden>Log out</button></span></div>
 <p class="sub">See whether your child is at school or has gone home.</p>
 <p class="note" id="who"></p>
+
+<div id="pwCard" class="card" hidden>
+  <strong>Change password</strong>
+  <label for="pwCur">Current password</label><input id="pwCur" type="password" autocomplete="current-password">
+  <label for="pwNew">New password (at least 6 characters)</label><input id="pwNew" type="password" autocomplete="new-password">
+  <label for="pwNew2">Confirm new password</label><input id="pwNew2" type="password" autocomplete="new-password">
+  <p class="row"><button class="btn" id="pwSave">Save password</button><button class="btn alt sm" id="pwCancel">Cancel</button></p>
+</div>
 
 <div id="login" class="card" hidden>
   <strong id="loginTitle">Log in</strong>
@@ -69,7 +77,7 @@ input{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);
 
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signOut,updatePassword,reauthenticateWithCredential,EmailAuthProvider} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {getFirestore,collection,query,where,onSnapshot} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig={
@@ -106,6 +114,17 @@ $('fpBtn').onclick=async()=>{const e=$('em').value.trim().toLowerCase();if(!e){t
   try{await sendPasswordResetEmail(auth,e)}catch(x){}
   toast('If this email has an account, a password reset link has been sent.')};
 $('outBtn').onclick=()=>signOut(auth);
+$('pwBtn').onclick=()=>{$('pwCard').hidden=!$('pwCard').hidden};
+$('pwCancel').onclick=()=>{$('pwCard').hidden=true};
+$('pwSave').onclick=async()=>{
+  const u=auth.currentUser,n=$('pwNew').value;
+  if(!$('pwCur').value){toast('Enter your current password.');return}
+  if(n.length<6){toast('The new password must be at least 6 characters.');return}
+  if(n!==$('pwNew2').value){toast('The new passwords do not match.');return}
+  try{await reauthenticateWithCredential(u,EmailAuthProvider.credential(u.email,$('pwCur').value));await updatePassword(u,n);
+    ['pwCur','pwNew','pwNew2'].forEach(i=>$(i).value='');$('pwCard').hidden=true;toast('Password changed.')}
+  catch(e){toast(['auth/wrong-password','auth/invalid-credential'].includes(e.code)?'Your current password is incorrect.':e.code==='auth/too-many-requests'?'Too many attempts. Try again later.':'Could not change the password.')}};
+
 $('resBtn').onclick=()=>sendEmailVerification(auth.currentUser).then(()=>toast('Sent again.'),()=>toast('Please wait a moment before trying again.'));
 $('chkBtn').onclick=async()=>{await auth.currentUser.reload();await auth.currentUser.getIdToken(true);
   if(auth.currentUser.emailVerified)start(auth.currentUser);else toast('Your email is not verified yet.')};
@@ -113,12 +132,12 @@ $('chkBtn').onclick=async()=>{await auth.currentUser.reload();await auth.current
 onAuthStateChanged(auth,user=>{
   if(unsub){unsub();unsub=null}
   $('who').textContent='';
-  $('outBtn').hidden=!user;$('login').hidden=!!user;$('verify').hidden=true;$('app').hidden=true;
+  $('outBtn').hidden=!user;$('pwBtn').hidden=!(user&&user.emailVerified);if(!user)$('pwCard').hidden=true;$('login').hidden=!!user;$('verify').hidden=true;$('app').hidden=true;
   if(!user)return;
   if(!user.emailVerified){$('verify').hidden=false;return}
   start(user)});
 
-function start(user){
+function start(user){$('pwBtn').hidden=false;
   $('who').textContent='Signed in as '+user.email;
   $('verify').hidden=true;$('app').hidden=false;
   unsub=onSnapshot(query(collection(db,'log'),where('parentEmails','array-contains',user.email.toLowerCase())),
