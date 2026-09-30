@@ -15,7 +15,7 @@ main{max-width:520px;margin:0 auto;padding:16px 16px 96px}
 h1{font-size:1.5rem;margin:8px 0 2px;font-weight:600}
 .sub{color:var(--mute);margin:0 0 16px}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:6px;justify-content:center;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line)}
-nav button{flex:1;max-width:170px;padding:10px;border:0;border-radius:12px;background:transparent;color:var(--mute);font:inherit;font-weight:500}
+nav button{flex:1;max-width:170px;padding:10px 4px;border:0;border-radius:12px;background:transparent;color:var(--mute);font:inherit;font-weight:500}
 nav button[aria-selected="true"]{background:var(--acc);color:var(--acc-ink)}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 section{display:none}section.on{display:block}
@@ -39,6 +39,17 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(-
 .note{font-size:.88rem;color:var(--mute)}
 #toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%;text-align:center}
 #toast.on{opacity:1}
+.sf{border-collapse:collapse;font-size:11px;color:var(--ink)}
+.sf td,.sf th{border:1px solid var(--mute);padding:2px 4px;text-align:center;min-width:20px}
+.sf .nm{text-align:left;white-space:nowrap}.sf .rm{text-align:left;white-space:nowrap;font-size:10px}
+.sf .g,.sf .tt{font-weight:600;background:var(--line)}.sf .off{background:var(--line)}
+.sf .tdy{background:linear-gradient(135deg,var(--ink) 50%,transparent 50%)}
+.sf th[data-day]{cursor:pointer}
+.sfwrap{overflow-x:auto;margin:10px 0}.sfhead{font-size:.9rem;margin:8px 0}
+.sfsum td{border:1px solid var(--mute);padding:3px 8px;font-size:.9rem}
+@media print{@page{size:landscape;margin:8mm}:root{--bg:#fff;--card:#fff;--ink:#000;--mute:#555;--line:#ddd}
+nav,#toast,.noprint,main>.row,.sub{display:none!important}body{background:#fff}main{max-width:none;padding:0}
+.sf,.sf *{-webkit-print-color-adjust:exact;print-color-adjust:exact}.sf{font-size:9px}}
 </style>
 </head>
 <body>
@@ -73,7 +84,9 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(-
 <section id="tab-kids">
   <div class="card">
     <strong id="formTitle">Add a child</strong>
-    <label for="kName">Child's name</label><input id="kName" autocomplete="off">
+    <label for="kName">Child's name (type as Last, First Middle for SF2)</label><input id="kName" autocomplete="off">
+    <label for="kSex">Sex</label><select id="kSex"><option value="">Select...</option><option value="M">Male</option><option value="F">Female</option></select>
+    <label for="kSec">Grade and section (e.g. Grade 3 - Rizal)</label><input id="kSec" autocomplete="off">
     <label for="kParent">Parent's name</label><input id="kParent" autocomplete="off">
     <label for="kPhone">Parent's mobile number</label><input id="kPhone" inputmode="tel" placeholder="09xx xxx xxxx">
     <label for="kEmail">Parent's email (for the parent app)</label><input id="kEmail" type="email" autocomplete="off">
@@ -86,6 +99,23 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(-
 <section id="tab-log">
   <div class="row" style="margin-bottom:10px"><strong id="logHead">Today</strong><button class="btn alt sm" id="csvBtn">Copy as CSV</button></div>
   <div id="logList"></div>
+</section>
+
+<section id="tab-sf2">
+  <details class="card noprint"><summary><strong>School details</strong></summary>
+    <label for="sfSchool">School name</label><input id="sfSchool" autocomplete="off">
+    <label for="sfId">School ID</label><input id="sfId" autocomplete="off">
+    <label for="sfYear">School year (e.g. 2026-2027)</label><input id="sfYear" autocomplete="off">
+    <label for="sfAdv">Class adviser</label><input id="sfAdv" autocomplete="off">
+    <label for="sfCut">Late after (time)</label><input id="sfCut" type="time" value="07:30">
+    <label for="sfEnr">Enrollment as of 1st Friday of the school year (optional)</label><input id="sfEnr" type="number" min="0" inputmode="numeric">
+  </details>
+  <div class="card noprint">
+    <label for="sfMonth">Month</label><input id="sfMonth" type="month">
+    <label for="sfSec">Section</label><select id="sfSec"></select>
+    <p class="row"><button class="btn" id="sfGo">Generate SF2</button><span><button class="btn alt sm" id="sfPrint">Print / PDF</button> <button class="btn alt sm" id="sfCsv">Copy CSV</button></span></p>
+  </div>
+  <div id="sfOut"></div>
 </section>
 
 <section id="tab-staff">
@@ -105,6 +135,7 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(-
   <button role="tab" aria-selected="true" data-tab="tap">Tap</button>
   <button role="tab" aria-selected="false" data-tab="kids">Children</button>
   <button role="tab" aria-selected="false" data-tab="log">Log</button>
+  <button role="tab" aria-selected="false" data-tab="sf2">SF2</button>
   <button role="tab" aria-selected="false" data-tab="staff" id="navStaff" hidden>Staff</button>
 </nav>
 <div id="toast" role="status"></div>
@@ -203,28 +234,28 @@ function setForm(k){
   $('formTitle').textContent=k?'Edit child':'Add a child';
   $('addKid').textContent=k?'Save':'Add';$('cancelEdit').hidden=!k;
   const e=k?emailsOf(k):[];
-  $('kName').value=k?k.name:'';$('kParent').value=k?(k.parent||''):'';$('kPhone').value=k?k.phone:'';
+  $('kSex').value=k?(k.sex||''):'';$('kSec').value=k?(k.section||''):'';$('kName').value=k?k.name:'';$('kParent').value=k?(k.parent||''):'';$('kPhone').value=k?k.phone:'';
   $('kEmail').value=e[0]||'';$('kEmail2').value=e[1]||''}
 $('cancelEdit').onclick=()=>setForm(null);
 $('addKid').onclick=async()=>{
-  const name=$('kName').value.trim(),parent=$('kParent').value.trim(),phone=$('kPhone').value.trim();
+  const name=$('kName').value.trim(),parent=$('kParent').value.trim(),phone=$('kPhone').value.trim(),sex=$('kSex').value,section=$('kSec').value.trim();
   const emails=[$('kEmail').value,$('kEmail2').value].map(x=>x.trim().toLowerCase()).filter((x,i,a)=>x&&a.indexOf(x)===i);
   if(!name||!phone||!emails.length){toast('Enter the name of the child, a mobile number, and at least one parent email.');return}
   try{
     if(editing){
       const id=editing;
-      await updateDoc(doc(db,'kids',id),{name,parent,phone,parentEmails:emails});
+      await updateDoc(doc(db,'kids',id),{name,parent,phone,parentEmails:emails,sex,section});
       const snap=await getDocs(query(collection(db,'log'),where('kidId','==',id)));
       for(let i=0;i<snap.docs.length;i+=400){const bt=writeBatch(db);snap.docs.slice(i,i+400).forEach(d=>bt.update(d.ref,{parentEmails:emails,name}));await bt.commit()}
       toast('Changes saved');
     }else{
-      await addDoc(collection(db,'kids'),{name,parent,phone,parentEmails:emails,uid:null});toast('Added '+name)}
+      await addDoc(collection(db,'kids'),{name,parent,phone,parentEmails:emails,uid:null,sex,section});toast('Added '+name)}
     setForm(null);
   }catch(e){toast('Could not save ('+(e.code||e.message)+').')}};
 
-function render(){
+function render(){fillSec();
   $('simKid').innerHTML=kids.length?kids.map(k=>`<option value="${k.id}">${esc(k.name)}</option>`).join(''):'<option value="">No children yet</option>';
-  $('kidList').innerHTML=kids.length?kids.map(k=>`<div class="card"><div class="row"><div><strong>${esc(k.name)}</strong><div class="note">${esc(k.parent||'')} ${esc(k.phone)}</div><div class="note">${esc(emailsOf(k).join(', '))}</div></div>
+  $('kidList').innerHTML=kids.length?kids.map(k=>`<div class="card"><div class="row"><div><strong>${esc(k.name)}</strong><div class="note">${k.sex==='M'?'Male':k.sex==='F'?'Female':'Sex not set'} | ${esc(k.section||'No section')}</div><div class="note">${esc(k.parent||'')} ${esc(k.phone)}</div><div class="note">${esc(emailsOf(k).join(', '))}</div></div>
    <span class="tag ${k.uid?'ok':'no'}">${k.uid?'Has card':'No card'}</span></div>
    <div class="row" style="margin-top:8px"><button class="btn alt sm" data-a="${k.id}">${assigning===k.id?'Waiting for a tap...':(k.uid?'Replace card':'Link card')}</button>
    <span><button class="btn alt sm" data-e="${k.id}">Edit</button> <button class="btn alt sm" data-d="${k.id}">Remove</button></span></div></div>`).join(''):'<p class="note">No children yet. Add one above.</p>';
@@ -243,6 +274,67 @@ $('simBtn').onclick=async()=>{
 $('csvBtn').onclick=()=>{
   const rows=['Name,Type,Time'].concat(logs.map(l=>`"${l.name}",${l.type==='in'?'Arrived':'Left'},${new Date(l.time).toLocaleString('en-PH')}`)).join('\n');
   navigator.clipboard&&navigator.clipboard.writeText(rows).then(()=>toast('CSV copied'),()=>toast('Could not copy'))};
+
+// --- SF2 (Daily Attendance Report of Learners)
+// SF2-CORE-START
+function buildSF2(ks,lg,o){
+  const [ch,cm]=o.cutoff.split(':').map(Number),n=new Date(o.year,o.month+1,0).getDate();
+  const first={},anyTap=new Set();
+  lg.forEach(l=>{const k=new Date(l.time).getDate();anyTap.add(k);const m=first[l.kidId]||(first[l.kidId]={});if(!(k in m)||l.time<m[k])m[k]=l.time});
+  const t0=new Date(o.today);t0.setHours(0,0,0,0);
+  const days=[];
+  for(let d=1;d<=n;d++){const dt=new Date(o.year,o.month,d),wd=dt.getDay();
+    let cls=wd>0&&wd<6&&anyTap.has(d);if(o.overrides&&d in o.overrides)cls=o.overrides[d];
+    if(dt>t0)cls=false;days.push({d,wd,cls})}
+  const rows=ks.map(k=>{
+    const marks=days.map(x=>{if(!x.cls)return '';const t=(first[k.id]||{})[x.d];if(t===undefined)return 'A';
+      const dt=new Date(t);return dt.getHours()*60+dt.getMinutes()>ch*60+cm?'T':'P'});
+    let abs=0,tar=0,run=0,best=0;
+    marks.forEach((m,i)=>{if(!days[i].cls)return;if(m==='A'){abs++;run++;best=Math.max(best,run)}else{run=0;if(m==='T')tar++}});
+    return {kid:k,marks,abs,tar,streak:best}});
+  return {n,days,schoolDays:days.filter(x=>x.cls).length,rows}}
+// SF2-CORE-END
+
+const SFKEY='sf2set',SFIDS=['sfSchool','sfId','sfYear','sfAdv','sfCut','sfEnr'];
+let sfLast=null,sfOv={};
+try{const v=JSON.parse(localStorage.getItem(SFKEY)||'{}');SFIDS.forEach(i=>{if(v[i])$(i).value=v[i]})}catch(e){}
+SFIDS.forEach(i=>$(i).onchange=()=>{try{localStorage.setItem(SFKEY,JSON.stringify(Object.fromEntries(SFIDS.map(x=>[x,$(x).value]))))}catch(e){}if(sfLast)drawSF2()});
+{const n=new Date();$('sfMonth').value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')}
+function fillSec(){const cur=$('sfSec').value,secs=[...new Set(kids.map(k=>k.section).filter(Boolean))].sort();
+  $('sfSec').innerHTML='<option value="">All children</option>'+secs.map(x=>`<option${x===cur?' selected':''}>${esc(x)}</option>`).join('')}
+
+$('sfGo').onclick=async()=>{
+  const [y,m]=($('sfMonth').value||'').split('-').map(Number);if(!y){toast('Choose a month.');return}
+  let snap;try{snap=await getDocs(query(collection(db,'log'),where('time','>=',new Date(y,m-1,1).getTime()),where('time','<',new Date(y,m,1).getTime()),orderBy('time')))}catch(e){toast('Could not load the log ('+(e.code||e.message)+').');return}
+  const sec=$('sfSec').value;
+  sfLast={y,m,sec,key:y+'-'+m,lg:snap.docs.map(d=>d.data()),ks:kids.filter(k=>!sec||k.section===sec).sort((a,b)=>a.name.localeCompare(b.name))};
+  drawSF2()};
+function sfCalc(){const L=sfLast;return buildSF2(L.ks,L.lg,{year:L.y,month:L.m-1,cutoff:$('sfCut').value||'07:30',today:new Date(),overrides:sfOv[L.key]})}
+function drawSF2(){
+  const L=sfLast,r=sfCalc(),WD=['S','M','T','W','Th','F','S'];
+  const mon=new Date(L.y,L.m-1,1).toLocaleString('en-PH',{month:'long',year:'numeric'});
+  let body='',cnt=0,five=0,dta=0;
+  [['MALE','M'],['FEMALE','F'],['SEX NOT SET','']].forEach(([label,s])=>{
+    const rs=r.rows.filter(x=>(x.kid.sex||'')===s);if(!rs.length)return;
+    const pd=r.days.map(()=>0);
+    body+=`<tr class="g"><td colspan="${r.n+5}" style="text-align:left">${label}</td></tr>`;
+    rs.forEach((x,i)=>{cnt++;if(x.streak>=5)five++;
+      body+=`<tr><td>${i+1}</td><td class="nm">${esc(x.kid.name)}</td>${x.marks.map((mk,j)=>{if(mk==='P'||mk==='T'){pd[j]++;dta++}
+        return `<td class="${mk==='T'?'tdy':r.days[j].cls?'':'off'}">${mk==='A'?'x':''}</td>`}).join('')}<td>${x.abs||''}</td><td>${x.tar||''}</td><td class="rm">${x.streak>=5?'Absent 5+ days in a row':''}</td></tr>`});
+    body+=`<tr class="tt"><td></td><td class="nm">${label} | Total present</td>${pd.map((v,j)=>`<td>${r.days[j].cls?v:''}</td>`).join('')}<td>${rs.reduce((a,x)=>a+x.abs,0)||''}</td><td>${rs.reduce((a,x)=>a+x.tar,0)||''}</td><td></td></tr>`});
+  const sd=r.schoolDays,ada=sd?dta/sd:0,enr=+$('sfEnr').value||cnt,pct=v=>v.toFixed(1)+'%';
+  const sum=[['Registered learners (end of month)',cnt],['Enrollment as of 1st Friday',enr],['Percentage of enrollment',enr?pct(cnt/enr*100):'-'],['School days in the month',sd],['Total daily attendance',dta],['Average daily attendance',ada.toFixed(1)],['Percentage of attendance for the month',cnt?pct(ada/cnt*100):'-'],['Learners absent 5 days in a row',five],['Dropped out / transferred out / transferred in','(write in by hand)']];
+  $('sfOut').innerHTML=`<div class="sfhead"><strong>School Form 2 - Daily Attendance Report of Learners</strong><br>${esc($('sfSchool').value)} ${$('sfId').value?'(ID '+esc($('sfId').value)+')':''} | SY ${esc($('sfYear').value)} | ${mon} | ${esc(L.sec||'All children')} | Adviser: ${esc($('sfAdv').value)}</div>
+  <div class="sfwrap"><table class="sf"><thead><tr><th rowspan="2">No.</th><th rowspan="2" class="nm">Learner's name</th>${r.days.map(x=>`<th data-day="${x.d}">${x.d}</th>`).join('')}<th rowspan="2">Absent</th><th rowspan="2">Tardy</th><th rowspan="2">Remarks</th></tr>
+  <tr>${r.days.map(x=>`<th>${WD[x.wd]}</th>`).join('')}</tr></thead><tbody>${body||`<tr><td colspan="${r.n+5}">No children in this section.</td></tr>`}</tbody></table></div>
+  <table class="sfsum">${sum.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join('')}</table>
+  <p class="note">x = absent. Shaded corner = late (after ${esc($('sfCut').value||'07:30')}). Grey = no class. A weekday counts as a class day when at least one child tapped in. Tap a date to switch it between class day and no-class day. Today's absences are final only after the day ends.</p>`;
+  document.querySelectorAll('[data-day]').forEach(h=>h.onclick=()=>{const o=sfOv[L.key]||(sfOv[L.key]={}),d=+h.dataset.day;o[d]=!r.days[d-1].cls;drawSF2()})}
+$('sfPrint').onclick=()=>{if(!sfLast){toast('Generate the report first.');return}window.print()};
+$('sfCsv').onclick=()=>{if(!sfLast){toast('Generate the report first.');return}
+  const r=sfCalc(),cd=r.days.filter(x=>x.cls);
+  const rows=['Name,Sex,'+cd.map(x=>x.d).join(',')+',Absent,Tardy'].concat(r.rows.map(x=>`"${x.kid.name}",${x.kid.sex||''},${r.days.map((d,i)=>d.cls?x.marks[i]:null).filter(v=>v!==null).join(',')},${x.abs},${x.tar}`)).join('\n');
+  navigator.clipboard&&navigator.clipboard.writeText(rows).then(()=>toast('CSV copied (P present, T late, A absent)'),()=>toast('Could not copy'))};
 
 // --- staff management (admins only)
 function renderStaff(){
