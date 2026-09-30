@@ -185,6 +185,8 @@ main:has(#tab-sf2.on){max-width:1180px}
     <label for="sfHead">School head</label><input id="sfHead" autocomplete="off">
     <label for="sfEnrM">Enrolment as of 1st Friday of the SY: boys (optional)</label><input id="sfEnrM" type="number" min="0" inputmode="numeric">
     <label for="sfEnrF">Enrolment as of 1st Friday of the SY: girls (optional)</label><input id="sfEnrF" type="number" min="0" inputmode="numeric">
+    <label for="sfLogoFile">School logo (DepEd seal by default)</label>
+    <div class="row"><img id="sfLogoPrev" alt="Logo" style="width:48px;height:48px;object-fit:contain"><span><input type="file" id="sfLogoFile" accept="image/*"> <button class="btn alt sm" id="sfLogoReset" type="button">Use default</button></span></div>
   </details>
   <div class="card noprint">
     <label for="sfMonth">Month</label><input id="sfMonth" type="month">
@@ -541,7 +543,7 @@ function drawSF2(){sfMode='m';
   ${(()=>{const ea=(L.adj||[]).filter(a=>a.status!=='auto');return ea.length?`<details class="adjHist" id="adjHist"${sfHistOpen?' open':''}><summary>Edited attendance (${ea.length})</summary>${ea.sort((a,b)=>a.day-b.day).map(a=>`<div class="msg"><strong>${esc(a.name)}</strong>, ${monN} ${a.day}: ${ST[a.prev||'']} &rarr; <strong>${ST[a.status]}</strong><br><span class="note">${esc(a.byEmail||'')} ${new Date(a.at).toLocaleString('en-PH')}${a.note?' - '+esc(a.note):''}</span> <button class="btn alt sm" data-undo="${esc(a.id)}">Undo</button></div>`).join('')}</details>`:''})()}
   </details>
   <div class="sfview"><div class="sfpaper">
-  <div class="sfhd"><img class="logo" alt="DepEd seal" src="${SFLOGO}"><div class="sft">School Form 2 (SF2) Daily Attendance Report of Learners</div><div class="sfs">(This replaced Form 1, Form 2 &amp; STS Form 4 - Absenteeism and Dropout Profile)</div></div>
+  <div class="sfhd"><img class="logo" alt="DepEd seal" src="${sfLogoCur}"><div class="sft">School Form 2 (SF2) Daily Attendance Report of Learners</div><div class="sfs">(This replaced Form 1, Form 2 &amp; STS Form 4 - Absenteeism and Dropout Profile)</div></div>
   <div class="sfh2"><b class="l">School ID</b><span class="bx2">${v('sfId')}</span><b class="l">School Year</b><span class="bx2">${v('sfYear')}</span><b class="l">Report for the Month of</b><span class="bx2">${mon}</span>
   <b class="l n">Name of School</b><span class="bx2 s3">${v('sfSchool')}</span><b class="l">Grade Level</b><span class="bx2">${esc(grade)}</span><b class="l">Section</b><span class="bx2">${esc(section)}</span></div>
   <div class="sfwrap">${tb(blk('M','MALE',0)+blk('F','FEMALE',0)+blk('','SEX NOT SET',0)+comb)}</div>
@@ -574,6 +576,20 @@ $('sfCsv').onclick=()=>{if(sfMode==='s'&&sfSum)return sfSumCsv();if(!sfLast){toa
   const rows=['Name,Sex,'+cd.map(x=>x.d).join(',')+',Absent,Tardy'].concat(r.rows.map(x=>`"${x.kid.name}",${x.kid.sex||''},${r.days.map((d,i)=>d.cls?x.marks[i]:null).filter(v=>v!==null).join(',')},${x.abs},${x.tar}`)).join('\n');
   navigator.clipboard&&navigator.clipboard.writeText(rows).then(()=>toast('CSV copied (P present, T late, A absent)'),()=>toast('Could not copy'))};
 
+// --- SF2 logo: upload any time; kept on this device, resized small
+const SFLOGOKEY='sf2logo';let sfLogoCur=SFLOGO;
+try{const v=localStorage.getItem(SFLOGOKEY);if(v)sfLogoCur=v}catch(e){}
+$('sfLogoPrev').src=sfLogoCur;
+function setLogo(u){sfLogoCur=u;$('sfLogoPrev').src=u;if(sfMode==='s'&&sfSum)drawSum();else if(sfLast&&$('sfOut').firstChild)drawSF2()}
+$('sfLogoFile').onchange=e=>{const f=e.target.files[0];if(!f)return;if(!/^image\//.test(f.type)){toast('Choose an image file.');return}
+  const im=new Image(),u=URL.createObjectURL(f);
+  im.onload=()=>{const sc=Math.min(1,256/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
+    c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);const d=c.toDataURL('image/png');
+    try{localStorage.setItem(SFLOGOKEY,d)}catch(x){toast('Could not keep the logo on this device; it will reset on reload.')}
+    setLogo(d);toast('Logo updated');e.target.value=''};
+  im.onerror=()=>toast('Could not read that image.');im.src=u};
+$('sfLogoReset').onclick=()=>{try{localStorage.removeItem(SFLOGOKEY)}catch(e){}setLogo(SFLOGO);toast('Default logo restored')};
+
 // --- SF2 school-year summary: per learner, present and absent days for every month (Jul-Jun)
 const SFMO=['JUL','AUG','SEP','OCT','NOV','DEC','JAN','FEB','MAR','APR','MAY','JUN'],SFMN=[7,8,9,10,11,12,1,2,3,4,5,6];
 $('sfSum').onclick=async()=>{
@@ -605,7 +621,7 @@ function drawSum(){const S=sfSum,v=i=>esc($(i).value),[grade,...rest]=(S.sec||''
   const cg=`<colgroup><col style="width:2.5%"><col style="width:17%">${'<col>'.repeat(26)}</colgroup>`;
   $('sfOut').innerHTML=`<div class="noprint note">School year summary: present days (P + Late) and absent days per month. Use Print / PDF or Copy CSV above.</div>
   <div class="sfview"><div class="sfpaper">
-  <div class="sfhd"><img class="logo" alt="DepEd seal" src="${SFLOGO}"><div class="sft">School Form 2 (SF2) Daily Attendance Report of Learners</div><div class="sfs">(This replaced Form 1, Form 2 &amp; STS Form 4 - Absenteeism and Dropout Profile)</div><div class="sft" style="font-size:1.2rem">${v('sfYear')}</div></div>
+  <div class="sfhd"><img class="logo" alt="DepEd seal" src="${sfLogoCur}"><div class="sft">School Form 2 (SF2) Daily Attendance Report of Learners</div><div class="sfs">(This replaced Form 1, Form 2 &amp; STS Form 4 - Absenteeism and Dropout Profile)</div><div class="sft" style="font-size:1.2rem">${v('sfYear')}</div></div>
   <div class="sfh2"><b class="l">School ID</b><span class="bx2">${v('sfId')}</span><b class="l">School Year</b><span class="bx2">${v('sfYear')}</span><b class="l">Report for the Month of</b><span class="bx2">SUMMARY</span>
   <b class="l n">Name of School</b><span class="bx2 s3">${v('sfSchool')}</span><b class="l">Grade Level</b><span class="bx2">${esc(grade)}</span><b class="l">Section</b><span class="bx2">${esc(section)}</span></div>
   <div class="sfwrap"><table class="sf sfy">${cg}<thead><tr><th rowspan="2">No.</th><th rowspan="2" class="nm">LEARNER'S NAME<br>(Last Name, First Name, Middle Name)</th><th colspan="13">ATTENDANCE SUMMARY</th><th colspan="13" class="g">ABSENCES SUMMARY</th></tr>
