@@ -181,14 +181,14 @@ main:has(#tab-sf2.on){max-width:1180px}
 
 <section id="tab-sf2">
   <details class="card noprint"><summary><strong>School details</strong></summary>
-    <label for="sfSchool">School name</label><input id="sfSchool" autocomplete="off">
-    <label for="sfId">School ID</label><input id="sfId" autocomplete="off">
-    <label for="sfYear">School year (e.g. 2026-2027)</label><input id="sfYear" autocomplete="off">
-    <label for="sfAdv">Class adviser</label><input id="sfAdv" autocomplete="off">
-    <label for="sfCut">Late after (time)</label><input id="sfCut" type="time" value="07:30">
-    <label for="sfHead">School head</label><input id="sfHead" autocomplete="off">
-    <label for="sfEnrM">Enrolment as of 1st Friday of the SY: boys (optional)</label><input id="sfEnrM" type="number" min="0" inputmode="numeric">
-    <label for="sfEnrF">Enrolment as of 1st Friday of the SY: girls (optional)</label><input id="sfEnrF" type="number" min="0" inputmode="numeric">
+    <div class="frm c2"><div><label for="sfSchool">School name</label><input id="sfSchool" autocomplete="off"></div>
+    <div><label for="sfId">School ID</label><input id="sfId" autocomplete="off"></div></div>
+    <div class="frm c2"><div><label for="sfAdv">Class adviser</label><input id="sfAdv" autocomplete="off"></div>
+    <div><label for="sfYear">School year (e.g. 2026-2027)</label><input id="sfYear" autocomplete="off"></div></div>
+    <div class="frm"><div><label for="sfHead">School head</label><input id="sfHead" autocomplete="off"></div></div>
+    <div class="frm c2"><div><label for="sfEnrM">Enrolment as of 1st Friday of the SY: boys (optional)</label><input id="sfEnrM" type="number" min="0" inputmode="numeric"></div>
+    <div><label for="sfEnrF">Enrolment as of 1st Friday of the SY: girls (optional)</label><input id="sfEnrF" type="number" min="0" inputmode="numeric"></div></div>
+    <div class="frm"><div><label for="sfCut">Late after (time)</label><input id="sfCut" type="time" value="07:30"></div></div>
     <label for="sfLogoFile">Logo, upper left (DepEd seal by default)</label>
     <div class="row"><img id="sfLogoPrev" alt="Logo left" style="width:48px;height:48px;object-fit:contain"><span><input type="file" id="sfLogoFile" accept="image/*"> <button class="btn alt sm" id="sfLogoReset" type="button">Use default</button></span></div>
     <label for="sfLogoFile2">Logo, upper right (DepEd logo by default)</label>
