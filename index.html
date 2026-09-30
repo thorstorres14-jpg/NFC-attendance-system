@@ -164,8 +164,9 @@ main:has(#tab-sf2.on){max-width:1180px}
     <div class="frm c3"><div><label for="kLast">Last name</label><input id="kLast" autocomplete="off"></div>
       <div><label for="kFirst">First name</label><input id="kFirst" autocomplete="off"></div>
       <div><label for="kMid">Middle name</label><input id="kMid" autocomplete="off"></div></div>
-    <div class="frm c2s"><div><label for="kSex">Sex</label><select id="kSex"><option value="">Select...</option><option value="M">Male</option><option value="F">Female</option></select></div>
-      <div><label for="kSec">Grade and section</label><select id="kSec"></select></div></div>
+    <div class="frm c3"><div><label for="kSex">Sex</label><select id="kSex"><option value="">Select...</option><option value="M">Male</option><option value="F">Female</option></select></div>
+      <div><label for="kGrade">Grade</label><select id="kGrade"></select></div>
+      <div><label for="kSecName">Section</label><select id="kSecName"></select><select id="kSec" hidden></select></div></div>
     <div class="frm c2"><div><label for="kParent">Parent's name</label><input id="kParent" autocomplete="off"></div>
       <div><label for="kPhone">Parent's mobile number</label><input id="kPhone" inputmode="tel" placeholder="09xx xxx xxxx"></div></div>
     <div class="frm"><div><label for="kEmail">Parent's email (for the parent app)</label><input id="kEmail" type="email" autocomplete="off"></div></div>
@@ -409,8 +410,16 @@ $('csvBtn').onclick=()=>{
 // --- manage grades and sections (admins)
 const cmp=(a,b)=>a.localeCompare(b,undefined,{numeric:true});
 function fillKSec(cur){const n=secList.map(x=>x.name);if(cur&&!n.includes(cur))n.push(cur);
-  $('kSec').innerHTML='<option value="">Select...</option>'+n.map(x=>`<option${x===cur?' selected':''}>${esc(x)}</option>`).join('')}
-function renderSecs(){fillKSec($('kSec').value);
+  const sp=x=>{const a=x.split(' - ');return [a[0],a.slice(1).join(' - ')]},o=(v,t,on)=>`<option value="${esc(v)}"${on?' selected':''}>${esc(t)}</option>`;
+  let g,sc;if(typeof cur==='string'){[g,sc]=cur?sp(cur):['','']}else{g=$('kGrade').value;sc=$('kSecName').value}
+  const grades=[...new Set(n.map(x=>sp(x)[0]))].sort(cmp);if(!grades.includes(g)){g='';sc=''}
+  const secs=[...new Set(n.filter(x=>sp(x)[0]===g).map(x=>sp(x)[1]).filter(Boolean))].sort(cmp);if(!secs.includes(sc))sc='';
+  $('kGrade').innerHTML=o('','Select...',!g)+grades.map(x=>o(x,x,x===g)).join('');
+  $('kSecName').innerHTML=o('','Select...',!sc)+secs.map(x=>o(x,x,x===sc)).join('');
+  const cv=sc?g+' - '+sc:g;
+  $('kSec').innerHTML='<option value="">Select...</option>'+n.map(x=>`<option${x===cv?' selected':''}>${esc(x)}</option>`).join('')}
+$('kGrade').onchange=()=>fillKSec();$('kSecName').onchange=()=>fillKSec();
+function renderSecs(){fillKSec();
   $('secList').innerHTML=secList.length?secList.map(x=>{const c=kids.filter(k=>k.section===x.name).length;
     return `<div class="card row"><div><strong>${esc(x.name)}</strong><div class="note">${c} ${c===1?'child':'children'}</div></div><button class="btn alt sm" data-sx="${x.id}">Remove</button></div>`}).join(''):'<p class="note">No grades or sections yet. Add one above.</p>';
   document.querySelectorAll('[data-sx]').forEach(b=>b.onclick=()=>{const x=secList.find(z=>z.id===b.dataset.sx);
