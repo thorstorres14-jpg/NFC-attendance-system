@@ -152,6 +152,7 @@ main:has(#tab-sf2.on){max-width:1180px}
   <div id="result"></div>
   <div class="card">
     <strong>Try without NFC</strong>
+    <div class="frm c2"><div><label for="simGrade">Grade</label><select id="simGrade"></select></div><div><label for="simSec">Section</label><select id="simSec"></select></div></div>
     <label for="simKid">Choose a child</label><select id="simKid"></select>
     <p><button class="btn alt" id="simBtn">Simulate a tap</button></p>
   </div>
@@ -374,7 +375,7 @@ $('addKid').onclick=async()=>{
   }catch(e){toast('Could not save ('+(e.code||e.message)+').')}};
 
 function render(){fillSec();renderSecs();
-  $('simKid').innerHTML=kids.length?kids.map(k=>`<option value="${k.id}">${esc(k.name)}</option>`).join(''):'<option value="">No children yet</option>';
+  fillSim();
   $('kidList').innerHTML=kids.length?kids.map(k=>`<div class="card"><div class="row"><div><strong>${esc(k.name)}</strong><div class="note">${k.sex==='M'?'Male':k.sex==='F'?'Female':'Sex not set'} | ${esc(k.section||'No section')}</div><div class="note">${esc(k.parent||'')} ${esc(k.phone)}</div><div class="note">${esc(emailsOf(k).join(', '))}</div></div>
    <span class="tag ${k.uid?'ok':'no'}">${k.uid?'Has card':'No card'}</span></div>
    <div class="row" style="margin-top:8px"><button class="btn alt sm" data-a="${k.id}">${assigning===k.id?'Waiting for a tap...':(k.uid?'Replace card':'Link card')}</button>
@@ -386,8 +387,18 @@ function render(){fillSec();renderSecs();
   $('logHead').textContent='Today ('+t.length+')';
   $('logList').innerHTML=t.length?t.map(l=>`<div class="card row"><strong>${esc(l.name)}</strong><span class="tag ${l.type==='in'?'ok':''}">${l.type==='in'?'Arrived':'Left'} ${fmt(l.time)}</span></div>`).join(''):'<p class="note">No taps yet today.</p>'}
 
+// Try without NFC: narrow the child list by grade and section (sections are saved as "Grade 2 - Joshua")
+function fillSim(){const sp=x=>{const a=(x||'').split(' - ');return [a[0],a.slice(1).join(' - ')]},g0=$('simGrade').value,s0=$('simSec').value,k0=$('simKid').value,
+    o=(v,t,on)=>`<option value="${esc(v)}"${on?' selected':''}>${esc(t)}</option>`,
+    grades=[...new Set(kids.map(k=>sp(k.section)[0]).filter(Boolean))].sort(cmp),g=grades.includes(g0)?g0:'';
+  $('simGrade').innerHTML=o('','All grades',!g)+grades.map(x=>o(x,x,x===g)).join('');
+  const secs=[...new Set(kids.filter(k=>!g||sp(k.section)[0]===g).map(k=>sp(k.section)[1]).filter(Boolean))].sort(cmp),sc=secs.includes(s0)?s0:'';
+  $('simSec').innerHTML=o('','All sections',!sc)+secs.map(x=>o(x,x,x===sc)).join('');
+  const ks=kids.filter(k=>{const [a,b]=sp(k.section);return (!g||a===g)&&(!sc||b===sc)});
+  $('simKid').innerHTML=ks.length?ks.map(k=>`<option value="${k.id}"${k.id===k0?' selected':''}>${esc(k.name)}</option>`).join(''):`<option value="">${kids.length?'No children in this section':'No children yet'}</option>`}
+$('simGrade').onchange=fillSim;$('simSec').onchange=fillSim;
 $('simBtn').onclick=async()=>{
-  const k=kids.find(x=>x.id===$('simKid').value);if(!k){toast('Add a child first.');return}
+  const k=kids.find(x=>x.id===$('simKid').value);if(!k){toast('Choose a child first.');return}
   if(!k.uid){if(myRole==='gate'){toast('This child has no card yet. Ask an admin to link one.');return}k.uid='TEST-'+k.id;await updateDoc(doc(db,'kids',k.id),{uid:k.uid})}
   handleTap(k.uid)};
 
