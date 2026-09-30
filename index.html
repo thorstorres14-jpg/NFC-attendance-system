@@ -46,6 +46,15 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(-
 .sf .tdy{background:linear-gradient(135deg,var(--ink) 50%,transparent 50%)}
 .sf th[data-day]{cursor:pointer}
 .chk{display:flex;gap:8px;align-items:center;color:var(--ink);margin:4px 0}.chk input{width:auto;padding:0}
+.sf .hat{background:linear-gradient(to top right,transparent calc(50% - .5px),var(--mute) 50%,transparent calc(50% + .5px))}
+.sft{font-weight:700;text-align:center;font-size:1.05rem}.sfm{border-collapse:collapse;width:100%;margin:6px 0}
+.sfm td{border:1px solid var(--mute);padding:3px 6px;font-size:.85rem}.sfm td:nth-child(odd){font-weight:600;white-space:nowrap}
+.sfg{display:flex;flex-wrap:wrap;gap:8px;font-size:.78rem;margin-top:10px;align-items:flex-start}
+.sfg>div{flex:1;min-width:230px;border:1px solid var(--mute);padding:6px}.sfg p{margin:3px 0}
+.sfsum td:not(:first-child){text-align:center;min-width:34px}.sfsig{display:flex;gap:30px;margin-top:26px;font-size:.8rem}
+.sfsig>div{flex:1;text-align:center}.sfsig .ln{border-top:1px solid var(--ink);margin-top:26px;padding-top:2px}
+.dchip{min-width:32px;padding:6px 0;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--mute);font:inherit;font-size:.8rem}
+.dchip.on{background:var(--ink);color:var(--bg)}
 .sfwrap{overflow-x:auto;margin:10px 0}.sfhead{font-size:.9rem;margin:8px 0}
 .sfsum td{border:1px solid var(--mute);padding:3px 8px;font-size:.9rem}
 @media print{@page{size:landscape;margin:8mm}:root{--bg:#fff;--card:#fff;--ink:#000;--mute:#555;--line:#ddd}
@@ -117,7 +126,9 @@ nav,#toast,.noprint,main>.row,.sub{display:none!important}body{background:#fff}m
     <label for="sfYear">School year (e.g. 2026-2027)</label><input id="sfYear" autocomplete="off">
     <label for="sfAdv">Class adviser</label><input id="sfAdv" autocomplete="off">
     <label for="sfCut">Late after (time)</label><input id="sfCut" type="time" value="07:30">
-    <label for="sfEnr">Enrollment as of 1st Friday of the school year (optional)</label><input id="sfEnr" type="number" min="0" inputmode="numeric">
+    <label for="sfHead">School head</label><input id="sfHead" autocomplete="off">
+    <label for="sfEnrM">Enrolment as of 1st Friday of June: boys (optional)</label><input id="sfEnrM" type="number" min="0" inputmode="numeric">
+    <label for="sfEnrF">Enrolment as of 1st Friday of June: girls (optional)</label><input id="sfEnrF" type="number" min="0" inputmode="numeric">
   </details>
   <div class="card noprint">
     <label for="sfMonth">Month</label><input id="sfMonth" type="month">
@@ -355,7 +366,7 @@ function buildSF2(ks,lg,o){
   return {n,days,schoolDays:days.filter(x=>x.cls).length,rows}}
 // SF2-CORE-END
 
-const SFKEY='sf2set',SFIDS=['sfSchool','sfId','sfYear','sfAdv','sfCut','sfEnr'];
+const SFKEY='sf2set',SFIDS=['sfSchool','sfId','sfYear','sfAdv','sfCut','sfHead','sfEnrM','sfEnrF'];
 let sfLast=null,sfOv={};
 try{const v=JSON.parse(localStorage.getItem(SFKEY)||'{}');SFIDS.forEach(i=>{if(v[i])$(i).value=v[i]})}catch(e){}
 SFIDS.forEach(i=>$(i).onchange=()=>{try{localStorage.setItem(SFKEY,JSON.stringify(Object.fromEntries(SFIDS.map(x=>[x,$(x).value]))))}catch(e){}if(sfLast)drawSF2()});
@@ -372,25 +383,43 @@ $('sfGo').onclick=async()=>{
   drawSF2()};
 function sfCalc(){const L=sfLast;return buildSF2(L.ks,L.lg,{year:L.y,month:L.m-1,cutoff:$('sfCut').value||'07:30',today:new Date(),overrides:sfOv[L.key]})}
 function drawSF2(){
-  const L=sfLast,r=sfCalc(),WD=['S','M','T','W','Th','F','S'];
+  const L=sfLast,r=sfCalc(),WD=['S','M','T','W','Th','F','S'],cd=r.days.filter(x=>x.cls),N=Math.max(25,cd.length),idx=cd.map(x=>x.d-1),sd=cd.length;
   const mon=new Date(L.y,L.m-1,1).toLocaleString('en-PH',{month:'long',year:'numeric'});
-  let body='',cnt=0,five=0,dta=0;
-  [['MALE','M'],['FEMALE','F'],['SEX NOT SET','']].forEach(([label,s])=>{
-    const rs=r.rows.filter(x=>(x.kid.sex||'')===s);if(!rs.length)return;
-    const pd=r.days.map(()=>0);
-    body+=`<tr class="g"><td colspan="${r.n+5}" style="text-align:left">${label}</td></tr>`;
-    rs.forEach((x,i)=>{cnt++;if(x.streak>=5)five++;
-      body+=`<tr><td>${i+1}</td><td class="nm">${esc(x.kid.name)}</td>${x.marks.map((mk,j)=>{if(mk==='P'||mk==='T'){pd[j]++;dta++}
-        return `<td class="${mk==='T'?'tdy':r.days[j].cls?'':'off'}">${mk==='A'?'x':''}</td>`}).join('')}<td>${x.abs||''}</td><td>${x.tar||''}</td><td class="rm">${x.streak>=5?'Absent 5+ days in a row':''}</td></tr>`});
-    body+=`<tr class="tt"><td></td><td class="nm">${label} | Total present</td>${pd.map((v,j)=>`<td>${r.days[j].cls?v:''}</td>`).join('')}<td>${rs.reduce((a,x)=>a+x.abs,0)||''}</td><td>${rs.reduce((a,x)=>a+x.tar,0)||''}</td><td></td></tr>`});
-  const sd=r.schoolDays,ada=sd?dta/sd:0,enr=+$('sfEnr').value||cnt,pct=v=>v.toFixed(1)+'%';
-  const sum=[['Registered learners (end of month)',cnt],['Enrollment as of 1st Friday',enr],['Percentage of enrollment',enr?pct(cnt/enr*100):'-'],['School days in the month',sd],['Total daily attendance',dta],['Average daily attendance',ada.toFixed(1)],['Percentage of attendance for the month',cnt?pct(ada/cnt*100):'-'],['Learners absent 5 days in a row',five],['Dropped out / transferred out / transferred in','(write in by hand)']];
-  $('sfOut').innerHTML=`<div class="sfhead"><strong>School Form 2 - Daily Attendance Report of Learners</strong><br>${esc($('sfSchool').value)} ${$('sfId').value?'(ID '+esc($('sfId').value)+')':''} | SY ${esc($('sfYear').value)} | ${mon} | ${esc(L.sec||'All children')} | Adviser: ${esc($('sfAdv').value)}</div>
-  <div class="sfwrap"><table class="sf"><thead><tr><th rowspan="2">No.</th><th rowspan="2" class="nm">Learner's name</th>${r.days.map(x=>`<th data-day="${x.d}">${x.d}</th>`).join('')}<th rowspan="2">Absent</th><th rowspan="2">Tardy</th><th rowspan="2">Remarks</th></tr>
-  <tr>${r.days.map(x=>`<th>${WD[x.wd]}</th>`).join('')}</tr></thead><tbody>${body||`<tr><td colspan="${r.n+5}">No children in this section.</td></tr>`}</tbody></table></div>
-  <table class="sfsum">${sum.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join('')}</table>
-  <p class="note">x = absent. Shaded corner = late (after ${esc($('sfCut').value||'07:30')}). Grey = no class. A weekday counts as a class day when at least one child tapped in. Tap a date to switch it between class day and no-class day. Today's absences are final only after the day ends.</p>`;
-  document.querySelectorAll('[data-day]').forEach(h=>h.onclick=()=>{const o=sfOv[L.key]||(sfOv[L.key]={}),d=+h.dataset.day;o[d]=!r.days[d-1].cls;drawSF2()})}
+  const [grade,...rest]=(L.sec||'').split(' - '),section=rest.join(' - '),v=i=>esc($(i).value);
+  const hat='<td class="hat"></td>'.repeat(N-sd),hath='<th class="hat"></th>'.repeat(N-sd);
+  const G={M:0,F:0,'':0};Object.keys(G).forEach(k=>G[k]={n:0,dta:0,five:0,abs:0,tar:0,pd:cd.map(()=>0),rows:[]});
+  r.rows.forEach(x=>{const g=G[x.kid.sex||''];g.rows.push(x);g.n++;g.abs+=x.abs;g.tar+=x.tar;if(x.streak>=5)g.five++;
+    idx.forEach((j,c)=>{const mk=x.marks[j];if(mk==='P'||mk==='T'){g.pd[c]++;g.dta++}})});
+  const blk=(k,label)=>{const g=G[k];if(!g.n)return '';
+    return g.rows.map((x,i)=>`<tr><td>${i+1}</td><td class="nm">${esc(x.kid.name)}</td>${idx.map(j=>{const mk=x.marks[j];return `<td class="${mk==='T'?'tdy':''}">${mk==='A'?'x':''}</td>`}).join('')}${hat}<td>${x.abs||''}</td><td>${x.tar||''}</td><td class="rm">${x.streak>=5?'Absent 5+ days in a row':''}</td></tr>`).join('')
+    +`<tr class="tt"><td></td><td class="nm">${label} | TOTAL Per Day</td>${g.pd.map(n=>`<td>${n}</td>`).join('')}${hat}<td>${g.abs||''}</td><td>${g.tar||''}</td><td></td></tr>`};
+  const all=['M','F',''].map(k=>G[k]),sum=f=>all.reduce((a,g)=>a+f(g),0);
+  const comb=`<tr class="tt"><td></td><td class="nm">Combined TOTAL PER DAY</td>${cd.map((_,c)=>`<td>${sum(g=>g.pd[c])}</td>`).join('')}${hat}<td>${sum(g=>g.abs)||''}</td><td>${sum(g=>g.tar)||''}</td><td></td></tr>`;
+  const eM=+$('sfEnrM').value||G.M.n,eF=+$('sfEnrF').value||G.F.n,eT=eM+eF+G[''].n,rT=sum(g=>g.n),dT=sum(g=>g.dta);
+  const pc=(a,b)=>b?(a/b*100).toFixed(1)+'%':'-',av=d=>sd?(d/sd).toFixed(1):'0';
+  const row=(l,m,f,t)=>`<tr><td>${l}</td><td>${m}</td><td>${f}</td><td>${t}</td></tr>`;
+  const summ=row('* Enrolment as of 1st Friday of June',eM,eF,eT)+row('Late Enrolment during the month (beyond cut-off)','','','')
+    +row('Registered Learner as of end of the month',G.M.n,G.F.n,rT)+row('Percentage of Enrolment as of end of the month',pc(G.M.n,eM),pc(G.F.n,eF),pc(rT,eT))
+    +row('Average Daily Attendance',av(G.M.dta),av(G.F.dta),av(dT))+row('Percentage of Attendance for the month',pc(sd?G.M.dta/sd:0,G.M.n),pc(sd?G.F.dta/sd:0,G.F.n),pc(sd?dT/sd:0,rT))
+    +row('Number of students with 5 consecutive days of absences',G.M.five,G.F.five,sum(g=>g.five))+row('Drop out','','','')+row('Transferred out','','','')+row('Transferred in','','','');
+  const chips=r.days.filter(x=>new Date(L.y,L.m-1,x.d)<=new Date()).map(x=>`<button class="dchip${x.cls?' on':''}" data-day="${x.d}" title="${WD[x.wd]}">${x.d}</button>`).join(' ');
+  $('sfOut').innerHTML=`<div class="noprint note">Class days (tap a date to include or exclude it). A weekday counts as a class day when at least one child tapped in. Today's absences are final only after the day ends.<div style="margin:6px 0">${chips}</div></div>
+  <div class="sft">School Form 2 (SF2) Daily Attendance Report of Learners</div><div class="note" style="text-align:center">(This replaced Form 1, Form 2 &amp; STS Form 4 - Absenteeism and Dropout Profile)</div>
+  <table class="sfm"><tr><td>School ID</td><td>${v('sfId')}</td><td>School Year</td><td>${v('sfYear')}</td><td>Report for the Month of</td><td>${mon}</td></tr>
+  <tr><td>Name of School</td><td>${v('sfSchool')}</td><td>Grade Level</td><td>${esc(grade)}</td><td>Section</td><td>${esc(section)}</td></tr></table>
+  <div class="sfwrap"><table class="sf"><thead><tr><th rowspan="2">No.</th><th rowspan="2" class="nm">LEARNER'S NAME<br>(Last Name, First Name, Middle Name)</th>${cd.map(x=>`<th>${x.d}</th>`).join('')}${hath}<th colspan="2">Total for the Month</th><th rowspan="2">REMARK/S (If DROPPED OUT, state reason. If TRANSFERRED IN/OUT, write the name of School.)</th></tr>
+  <tr>${cd.map(x=>`<th>${WD[x.wd]}</th>`).join('')}${hath}<th>ABSENT</th><th>TARDY</th></tr></thead>
+  <tbody>${blk('M','MALE')}${blk('','SEX NOT SET')}${blk('F','FEMALE')}${comb}${rT?'':`<tr><td colspan="${N+5}">No children in this section.</td></tr>`}</tbody></table></div>
+  <div class="sfg"><div><strong>GUIDELINES:</strong><p>1. The attendance shall be accomplished daily. Refer to the codes for checking learners' attendance.</p><p>2. Dates shall be written in the preceding columns beside Learner's Name.</p><p>3. To compute the following:</p>
+  <p>a. Percentage of Enrolment = Registered Learner as of End of the Month / Enrolment as of 1st Friday of June x 100</p><p>b. Average Daily Attendance = Total Daily Attendance / Number of School Days in reporting month</p><p>c. Percentage of Attendance for the month = Average daily attendance / Registered Learner as of End of the Month x 100</p>
+  <p>4. Every End of the month, the class adviser will submit this form to the office of the principal for recording of summary table into School Form 4. Once signed by the principal, this form should be returned to the adviser.</p>
+  <p>5. The adviser will extend necessary intervention including but not limited to home visitation to learners that committed 5 consecutive days of absences or those with potentials of dropping out.</p><p>6. Attendance performance of learner is expected to reflect in Form 137 and Form 138 every grading period.</p><p>* Beginning of School Year cut-off report is every 1st Friday of School Calendar Days</p></div>
+  <div><strong>1. CODES FOR CHECKING ATTENDANCE</strong><p>blank - Present; (x) - Absent; Tardy (half shaded = Upper for Late Comer, Lower for Cutting Classes)</p><p>(Late = after ${v('sfCut')||'07:30'})</p><strong>2. REASONS/CAUSES OF DROP-OUTS</strong>
+  <p>a. Domestic-Related: a.1 Had to take care of siblings; a.2 Early marriage/pregnancy; a.3 Parents' attitude toward schooling; a.4 Family problems</p><p>b. Individual-Related: b.1 Illness; b.2 Overage; b.3 Death; b.4 Drug Abuse; b.5 Poor academic performance; b.6 Lack of interest/Distractions; b.7 Hunger/Malnutrition</p>
+  <p>c. School-Related: c.1 Teacher Factor; c.2 Physical condition of classroom; c.3 Peer influence</p><p>d. Geographic/Environmental: d.1 Distance between home and school; d.2 Armed conflict (incl. tribal wars &amp; clan feuds); d.3 Calamities/Disasters</p><p>e. Financial-Related: e.1 Child labor, work</p><p>f. Others</p></div>
+  <div><table class="sf sfsum" style="width:100%"><tr><td>Month:</td><td colspan="3">${mon}</td></tr><tr><td>No. of Days of Classes:</td><td colspan="3">${sd}</td></tr><tr><th>Summary for the Month</th><th>M</th><th>F</th><th>TOTAL</th></tr>${summ}</table></div></div>
+  <div class="sfsig"><div>I certify that this is a true and correct report.<div class="ln">${v('sfAdv')}<br>(Signature of Teacher over Printed Name)</div></div><div>Attested by:<div class="ln">${v('sfHead')}<br>(Signature of School Head over Printed Name)</div></div></div>`;
+  document.querySelectorAll('.dchip').forEach(h=>h.onclick=()=>{const o=sfOv[L.key]||(sfOv[L.key]={}),d=+h.dataset.day;o[d]=!r.days[d-1].cls;drawSF2()})}
 $('sfPrint').onclick=()=>{if(!sfLast){toast('Generate the report first.');return}window.print()};
 $('sfCsv').onclick=()=>{if(!sfLast){toast('Generate the report first.');return}
   const r=sfCalc(),cd=r.days.filter(x=>x.cls);
