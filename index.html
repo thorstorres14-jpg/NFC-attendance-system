@@ -110,6 +110,9 @@ main:has(#tab-sf2.on){max-width:1180px}
 .sfy th.vt{height:46px;padding:2px 0}.sfy th.vt span{writing-mode:vertical-rl;transform:rotate(180deg);display:inline-block;font-size:.72rem}
 .sf.sfy td:nth-child(6n+2){border-right-width:1px}.sfy td,.sfy th{text-align:center}.sfy td.nm{text-align:left}.sfy .g{border-left:2px solid var(--ink)}
 .sfsig2{display:flex;justify-content:space-around;margin-top:26px;break-inside:avoid}.sfsig2>div{text-align:center;min-width:220px}.sfsig2 b{display:block;margin-top:22px;text-transform:uppercase}
+/* SF2 guideline formulas: same column widths on every row, bar as wide as its longest line */
+.fr{grid-template-columns:1.3em 15em minmax(0,1fr) 3em}.fr>span:nth-child(2){text-align:left}
+.fr .frac{display:grid;justify-self:center;width:max-content;max-width:100%;text-align:center}.fr .frac b{padding:0 6px}.fr>span:last-child{text-align:left}
 /* Add/Edit child form rows */
 .frm{display:grid;gap:8px}.frm>div{min-width:0}.frm.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .frm.c2{grid-template-columns:repeat(2,minmax(0,1fr))}.frm.c2s{grid-template-columns:minmax(0,1fr) minmax(0,1.7fr)}
