@@ -431,7 +431,11 @@ $('addSec').onclick=async()=>{
   try{await addDoc(collection(db,'sections'),{name});$('mSec').value='';toast('Added '+name)}
   catch(e){toast('Could not add ('+(e.code||e.message)+'). Have the new Firestore rules been published?')}};
 
-const secBoxes=x=>`<div style="margin-top:8px"><div class="note">Sections this adviser can see:</div>${secList.length?secList.map(z=>`<label class="chk"><input type="checkbox" data-sc="${x.id}" value="${esc(z.name)}"${(x.sections||[]).includes(z.name)?' checked':''}> ${esc(z.name)}</label>`).join(''):'<div class="note">Add sections in the Manage tab first.</div>'}</div>`;
+const secBoxes=x=>{const sp=n=>{const a=n.split(' - ');return [a[0],a.slice(1).join(' - ')]},G={};
+  secList.forEach(z=>{const [g,sc]=sp(z.name);(G[g]||(G[g]=[])).push({z,sc})});
+  const cb=(z,t)=>`<label class="chk"><input type="checkbox" data-sc="${x.id}" value="${esc(z.name)}"${(x.sections||[]).includes(z.name)?' checked':''}> ${esc(t)}</label>`;
+  return `<div style="margin-top:8px"><div class="note">Sections this adviser can see:</div>${secList.length?Object.keys(G).sort(cmp).map(g=>{const it=G[g].sort((a,b)=>cmp(a.sc,b.sc));
+    return it.length===1&&!it[0].sc?cb(it[0].z,it[0].z.name):`<div class="note" style="margin-top:6px"><strong>${esc(g)}</strong></div><div style="margin-left:14px">${it.map(i=>cb(i.z,i.sc||g)).join('')}</div>`}).join(''):'<div class="note">Add sections in the Manage tab first.</div>'}</div>`};
 
 // --- SF2 (Daily Attendance Report of Learners)
 // SF2-CORE-START
