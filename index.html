@@ -55,15 +55,23 @@ nav,#toast,.noprint,main>.row,.sub{display:none!important}body{background:#fff}m
 </head>
 <body>
 <main>
-<div class="row"><h1>Tap-In Attendance</h1><button class="btn alt sm" id="outBtn" hidden>Log out</button></div>
+<div class="row"><h1>Tap-In Attendance</h1><span><button class="btn alt sm" id="pwBtn" hidden>Password</button> <button class="btn alt sm" id="outBtn" hidden>Log out</button></span></div>
 <p class="sub">Tap a child's NFC card to record arrival and departure.</p>
+
+<div id="pwCard" class="card" hidden>
+  <strong>Change password</strong>
+  <label for="pwCur">Current password</label><input id="pwCur" type="password" autocomplete="current-password">
+  <label for="pwNew">New password (at least 6 characters)</label><input id="pwNew" type="password" autocomplete="new-password">
+  <label for="pwNew2">Confirm new password</label><input id="pwNew2" type="password" autocomplete="new-password">
+  <p class="row"><button class="btn" id="pwSave">Save password</button><button class="btn alt sm" id="pwCancel">Cancel</button></p>
+</div>
 
 <div id="login" class="card" hidden>
   <strong>Staff login</strong>
   <p class="note" id="loginMsg"></p>
   <label for="em">Email</label><input id="em" type="email" autocomplete="username">
   <label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password">
-  <p><button class="btn" id="inBtn">Log in</button></p>
+  <p class="row"><button class="btn" id="inBtn">Log in</button><button class="btn alt sm" id="fpBtn">Forgot password?</button></p>
 </div>
 
 <div id="app" hidden>
@@ -155,7 +163,7 @@ nav,#toast,.noprint,main>.row,.sub{display:none!important}body{background:#fff}m
 
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,signOut,updatePassword,reauthenticateWithCredential,EmailAuthProvider} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {getFirestore,collection,addDoc,updateDoc,deleteDoc,getDoc,getDocs,writeBatch,setDoc,doc,query,where,orderBy,onSnapshot} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 // Paste the config from the Firebase console here (Project settings > Your apps > Web app).
@@ -182,12 +190,26 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>showTab(b.datas
 // --- auth
 $('inBtn').onclick=()=>signInWithEmailAndPassword(auth,$('em').value.trim(),$('pw').value).catch(()=>toast('Incorrect email or password.'));
 $('outBtn').onclick=()=>signOut(auth);
+$('fpBtn').onclick=async()=>{const e=$('em').value.trim();if(!e){toast('Enter your email first.');return}
+  try{await sendPasswordResetEmail(auth,e)}catch(x){}
+  toast('If this email has an account, a password reset link has been sent.')};
+$('pwBtn').onclick=()=>{$('pwCard').hidden=!$('pwCard').hidden};
+$('pwCancel').onclick=()=>{$('pwCard').hidden=true};
+$('pwSave').onclick=async()=>{
+  const u=auth.currentUser,n=$('pwNew').value;
+  if(!$('pwCur').value){toast('Enter your current password.');return}
+  if(n.length<6){toast('The new password must be at least 6 characters.');return}
+  if(n!==$('pwNew2').value){toast('The new passwords do not match.');return}
+  try{await reauthenticateWithCredential(u,EmailAuthProvider.credential(u.email,$('pwCur').value));await updatePassword(u,n);
+    ['pwCur','pwNew','pwNew2'].forEach(i=>$(i).value='');$('pwCard').hidden=true;toast('Password changed.')}
+  catch(e){toast(['auth/wrong-password','auth/invalid-credential'].includes(e.code)?'Your current password is incorrect.':e.code==='auth/too-many-requests'?'Too many attempts. Try again later.':'Could not change the password.')}};
+
 onAuthStateChanged(auth,async user=>{
   unsub.forEach(u=>u());unsub=[];
   let admin=false;
   if(user){let ok=false;try{const sd=await getDoc(doc(db,'staff',user.uid));ok=sd.exists();if(ok){myRole=sd.data().role||'staff';mySecs=sd.data().sections||[]}admin=ok&&myRole==='admin'}catch(e){}
     if(!ok){$('loginMsg').textContent='This account is not a staff account. Check the staff document in Firestore: its Document ID must be the User UID of this account.';signOut(auth);return}$('loginMsg').textContent=''}
-  $('login').hidden=!!user;$('app').hidden=!user;$('nav').hidden=!user;$('outBtn').hidden=!user;$('navStaff').hidden=!admin;$('navManage').hidden=!admin;
+  $('login').hidden=!!user;$('app').hidden=!user;$('nav').hidden=!user;$('outBtn').hidden=!user;$('pwBtn').hidden=!user;if(!user)$('pwCard').hidden=true;$('navStaff').hidden=!admin;$('navManage').hidden=!admin;
   if(!user)return;
   const vis={tap:myRole!=='adviser',kids:myRole==='admin'||myRole==='staff',log:true,sf2:myRole!=='gate'};
   Object.entries(vis).forEach(([t,v])=>document.querySelector('nav [data-tab='+t+']').hidden=!v);
