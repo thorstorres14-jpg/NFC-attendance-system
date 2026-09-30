@@ -82,6 +82,19 @@ nav,#toast,.noprint,main>.row,.sub{display:none!important}body{background:#fff}m
 .sfh2 .s3{grid-column:span 3}.sfh2 .l.n{grid-column:1}
 @media(max-width:640px){.sfh2{grid-template-columns:max-content 1fr}.sfh2 .s3{grid-column:auto}.sfh2 .l{text-align:left;padding:0 8px 0 0}.sfh2 .bx2{margin:2px 0}}
 @media print{.sfh2 .l,.sfh2 .bx2{font-size:9px}.sfh2 .bx2{padding:1px 4px}}
+
+/* SF2 bottom block (matches LIS layout) */
+.sfg>div.gl{flex:2.4}.sfg>div.gc{flex:1;min-width:210px}.sfg>div.gr{flex:1.15;min-width:260px}
+.fr{display:grid;grid-template-columns:1.3em minmax(9em,auto) 1fr 3em;gap:6px;align-items:center;margin:6px 0}
+.fr .frac{display:block}.gc p{margin:6px 0}.gc strong{display:block;margin-top:4px}
+.sfsum{width:100%}.sfsum th{font-size:.72rem;font-weight:600}
+.sfsum td.sl{font-style:italic;font-size:.72rem;text-align:center;padding:4px 6px}.sfsum td.n{font-size:1rem;width:15%}
+.sfsum td.mo{font-size:.78rem;text-align:left;font-weight:600}.sfsum tr.sb td.sl{font-weight:600}
+.cert{font-style:italic;font-size:1rem;margin:14px 0 0}
+.gr .sg{margin:6px 0 0 14%}.gr .pn{text-align:center;font-size:1.15rem;min-height:1.6em;padding-top:10px}
+.gr .ln{margin-top:0;font-size:.7rem}
+@media(max-width:640px){.gr .sg{margin-left:0}.fr{grid-template-columns:1.3em 1fr}.fr .frac{grid-column:1/-1}}
+@media print{.fr{margin:3px 0}.sfsum td.sl,.sfsum th,.sfsum td.mo{font-size:7px}.sfsum td.n{font-size:9px}.cert{font-size:9px;margin-top:8px}.gr .pn{font-size:10px;min-height:14px;padding-top:4px}.gr .ln{font-size:7px}}
 </style>
 </head>
 <body>
@@ -419,12 +432,12 @@ function drawSF2(){
   const all=['M','F',''].map(k=>G[k]),sum=f=>all.reduce((a,g)=>a+f(g),0);
   const comb=`<tr class="tt"><td></td><td class="nm">Combined TOTAL PER DAY</td>${cd.map((_,c)=>`<td>${sum(g=>g.pd[c])}</td>`).join('')}${hat}<td>${sum(g=>g.abs)||''}</td><td>${sum(g=>g.tar)||''}</td><td></td></tr>`;
   const eM=+$('sfEnrM').value||G.M.n,eF=+$('sfEnrF').value||G.F.n,eT=eM+eF+G[''].n,rT=sum(g=>g.n),dT=sum(g=>g.dta);
-  const pc=(a,b)=>b?(a/b*100).toFixed(1)+'%':'-',av=d=>sd?(d/sd).toFixed(1):'0';
-  const row=(l,m,f,t)=>`<tr><td>${l}</td><td>${m}</td><td>${f}</td><td>${t}</td></tr>`;
-  const summ=row('* Enrolment as of 1st Friday of June',eM,eF,eT)+row('Late Enrolment during the month (beyond cut-off)','','','')
-    +row('Registered Learner as of end of the month',G.M.n,G.F.n,rT)+row('Percentage of Enrolment as of end of the month',pc(G.M.n,eM),pc(G.F.n,eF),pc(rT,eT))
+  const nf=x=>String(+(+x).toFixed(2)),pc=(a,b)=>b?nf(a/b*100):'0',av=d=>sd?nf(d/sd):'0',monN=new Date(L.y,L.m-1,1).toLocaleString('en-PH',{month:'long'});
+  const row=(l,m,f,t,c)=>`<tr${c?` class="${c}"`:''}><td colspan="2" class="sl">${l}</td><td class="n">${m}</td><td class="n">${f}</td><td class="n">${t}</td></tr>`;
+  const summ=row('* Enrolment as of (1st Friday of the SY)',eM,eF,eT,'sb')+row('Late enrolment &nbsp;during the month<br>(beyond cut-off)','','','')
+    +row('Registered Learners as of<br><b>end of month</b>',G.M.n,G.F.n,rT)+row('Percentage of Enrolment as of<br><b>end of month</b>',pc(G.M.n,eM),pc(G.F.n,eF),pc(rT,eT))
     +row('Average Daily Attendance',av(G.M.dta),av(G.F.dta),av(dT))+row('Percentage of Attendance for the month',pc(sd?G.M.dta/sd:0,G.M.n),pc(sd?G.F.dta/sd:0,G.F.n),pc(sd?dT/sd:0,rT))
-    +row('Number of students with 5 consecutive days of absences',G.M.five,G.F.five,sum(g=>g.five))+row('Drop out','','','')+row('Transferred out','','','')+row('Transferred in','','','');
+    +row('Number of students absent for 5 consecutive days',G.M.five,G.F.five,sum(g=>g.five))+row('NLS','','','','sb')+row('Transferred out','','','','sb')+row('Transferred in','','','','sb');
   const chips=r.days.filter(x=>new Date(L.y,L.m-1,x.d)<=new Date()).map(x=>`<button class="dchip${x.cls?' on':''}" data-day="${x.d}" title="${WD[x.wd]}">${x.d}</button>`).join(' ');
   const cg=`<colgroup><col style="width:3%"><col style="width:22%">${'<col>'.repeat(N)}<col style="width:4%"><col style="width:4%"><col style="width:13%"></colgroup>`;
   const hd=`<thead><tr><th rowspan="3">No.</th><th rowspan="3" class="nm">LEARNER'S NAME<br>(Last Name, First Name, Middle Name)</th><th colspan="${N}" class="ins">(1st row for date, 2nd row for Day: M,T,W,TH,F)</th><th colspan="2" rowspan="2">Total for the<br>Month</th><th rowspan="3" class="rm">REMARK/S (If DROPPED OUT, state reason, please refer to legend number 2.<br>If TRANSFERRED IN/OUT, write the name of School.)</th></tr>
@@ -438,21 +451,21 @@ function drawSF2(){
   <div class="sfwrap">${tb(blk('M','MALE',25)+blk('','SEX NOT SET',0))}</div>
   <div class="sfwrap pg">${tb(blk('F','FEMALE',20)+comb)}</div>
   <div class="sfg"><div class="gl"><span class="bx">GUIDELINES:</span>
-  <p>1. The attendance shall be accomplished daily. Refer to the codes for checking learners' attendance.</p><p>2. Dates shall be written in the preceding columns beside Learner's Name.</p><p>3. To compute the following:</p>
-  <div class="fr"><span>a.</span><span>Percentage of Enrolment =</span><span class="frac"><b>Registered Learner as of End of the Month</b>Enrolment as of 1st Friday of June</span><span>x 100</span></div>
-  <div class="fr"><span>b.</span><span>Average Daily Attendance =</span><span class="frac"><b>Total Daily Attendance</b>Number of School Days in reporting month</span></div>
-  <div class="fr"><span>c.</span><span>Percentage of Attendance for the month =</span><span class="frac"><b>Average daily attendance</b>Registered Learner as of End of the Month</span><span>x 100</span></div>
-  <p>4. Every End of the month, the class adviser will submit this form to the office of the principal for recording of summary table into the School Form 4. Once signed by the principal, this form should be returned to the adviser.</p>
-  <p><strong>5. The adviser will extend necessary intervention including but not limited to home visitation to learners that committed 5 consecutive days of absences or those with potentials of dropping out.</strong></p>
-  <p>6. Attendance performance of learner is expected to reflect in Form 137 and Form 138 every grading period.</p><p>&nbsp;&nbsp;* Beginning of School Year cut-off report is every 1st Friday of School Calendar Days</p><p class="pgn">School Form 2: Page 2 of ______</p></div>
-  <div class="gc"><strong>1. CODES FOR CHECKING ATTENDANCE</strong><p>blank - Present; (x) - Absent; Tardy (half shaded = Upper for Late Comer, Lower for Cutting Classes)</p><p>(Late = after ${v('sfCut')||'07:30'})</p><strong>2. REASONS/CAUSES OF DROP-OUTS</strong>
-  <p><b>a. Domestic-Related Factors</b><br>a.1 Had to take care of siblings<br>a.2 Early marriage/pregnancy<br>a.3 Parents' attitude toward schooling<br>a.4 Family problems</p>
-  <p><b>b. Individual-Related Factors</b><br>b.1 Illness<br>b.2 Overage<br>b.3 Death<br>b.4 Drug Abuse<br>b.5 Poor academic performance<br>b.6 Lack of interest/Distractions<br>b.7 Hunger/Malnutrition</p>
-  <p><b>c. School-Related Factors</b><br>c.1 Teacher Factor<br>c.2 Physical condition of classroom<br>c.3 Peer influence</p>
-  <p><b>d. Geographic/Environmental</b><br>d.1 Distance between home and school<br>d.2 Armed conflict (incl. tribal wars &amp; clan feuds)<br>d.3 Calamities/Disasters</p><p><b>e. Financial-Related</b><br>e.1 Child labor, work</p><p><b>f. Others</b></p></div>
-  <div class="gr"><table class="sf sfsum"><tr><td>Month:</td><td colspan="3">${mon}</td></tr><tr><td>No. of Days of Classes:</td><td colspan="3">${sd}</td></tr><tr><th>Summary for the Month</th><th>M</th><th>F</th><th>TOTAL</th></tr>${summ}</table>
-  <p class="cert">I certify that this is a true and correct report.</p><div class="ln">${v('sfAdv')}<br>(Signature of Teacher over Printed Name)</div>
-  <p class="cert">Attested by:</p><div class="ln">${v('sfHead')}<br>(Signature of School Head over Printed Name)</div></div></div>`;
+  <p>1. The attendance shall be accomplished daily. Refer to the codes for checking learners' attendance.</p><p>2. Dates shall be written in the columns after Learner's Name.</p><p>3. To compute the following:</p>
+  <div class="fr"><span>a.</span><span>Percentage of Enrolment =</span><span class="frac"><b>Registered Learners as of end of the month</b>Enrolment as of 1st Friday of the school year</span><span>x 100</span></div>
+  <div class="fr"><span>b.</span><span>Average Daily Attendance =</span><span class="frac"><b>Total Daily Attendance</b>Number of School Days in reporting month</span><span></span></div>
+  <div class="fr"><span>c.</span><span>Percentage of Attendance for the month =</span><span class="frac"><b>Average daily attendance</b>Registered Learners as of end of the month</span><span>x 100</span></div>
+  <p>4. Every end of the month, the class adviser will submit this form to the office of the principal for recording of summary table into School Form 4. Once signed by the principal, this form should be returned to the adviser.</p>
+  <p>5. The adviser will provide necessary interventions including but not limited to home visitation to learner/s who were absent for 5 consecutive days and/or those at risk of dropping out.</p>
+  <p>6. Attendance performance of learners will be reflected in Form 137 and Form 138 every grading period.</p><p class="pgn">*Beginning of School Year cut-off report is every 1st Friday of the School Year</p></div>
+  <div class="gc"><strong>1. CODES FOR CHECKING ATTENDANCE</strong><p>(blank) - Present; (x) - Absent; Tardy (half shaded = Upper for Late Comer, Lower for Cutting Classes)</p><p>(Late = after ${v('sfCut')||'07:30'})</p><strong>2. REASONS/CAUSES FOR NLS</strong>
+  <p><b>a. Domestic-Related Factors</b><br>a.1. Had to take care of siblings<br>a.2. Early marriage/pregnancy<br>a.3. Parents' attitude toward schooling<br>a.4. Family problems</p>
+  <p><b>b. Individual-Related Factors</b><br>b.1. Illness<br>b.2. Overage<br>b.3. Death<br>b.4. Drug Abuse<br>b.5. Poor academic performance<br>b.6. Lack of interest/Distractions<br>b.7. Hunger/Malnutrition</p>
+  <p><b>c. School-Related Factors</b><br>c.1. Teacher Factor<br>c.2. Physical condition of classroom<br>c.3. Peer influence</p>
+  <p><b>d. Geographic/Environmental</b><br>d.1. Distance between home and school<br>d.2. Armed conflict (incl. Tribal wars &amp; clanfeuds)<br>d.3. Calamities/Disasters</p><p><b>e. Financial-Related</b><br>e.1. Child labor, work</p><p><b>f. Others (Specify)</b></p></div>
+  <div class="gr"><table class="sf sfsum"><tr><td rowspan="2" class="mo">Month : ${monN}</td><td rowspan="2" class="mo">No. of Days of<br>Classes: ${sd}</td><th colspan="3">Summary</th></tr><tr><th>M</th><th>F</th><th>TOTAL</th></tr>${summ}</table>
+  <p class="cert">I certify that this is a true and correct report.</p><div class="sg"><div class="pn">${v('sfAdv')}</div><div class="ln">(Signature of Adviser over Printed Name)</div></div>
+  <p class="cert">Attested by:</p><div class="sg"><div class="pn">${v('sfHead')}</div><div class="ln">(Signature of School Head over Printed Name)</div></div></div></div>`;
   document.querySelectorAll('.dchip').forEach(h=>h.onclick=()=>{const o=sfOv[L.key]||(sfOv[L.key]={}),d=+h.dataset.day;o[d]=!r.days[d-1].cls;drawSF2()})}
 $('sfPrint').onclick=()=>{if(!sfLast){toast('Generate the report first.');return}window.print()};
 $('sfCsv').onclick=()=>{if(!sfLast){toast('Generate the report first.');return}
