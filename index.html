@@ -15,7 +15,7 @@ main{max-width:520px;margin:0 auto;padding:16px 16px 96px}
 h1{font-size:1.5rem;margin:8px 0 2px;font-weight:600}
 .sub{color:var(--mute);margin:0 0 16px}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:6px;justify-content:center;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line)}
-nav button{flex:1;max-width:170px;padding:10px 4px;border:0;border-radius:12px;background:transparent;color:var(--mute);font:inherit;font-weight:500}
+nav button{flex:1;max-width:170px;padding:10px 4px;border:0;border-radius:12px;background:transparent;color:var(--mute);font:inherit;font-size:.85rem;font-weight:500}
 nav button[aria-selected="true"]{background:var(--acc);color:var(--acc-ink)}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 section{display:none}section.on{display:block}
@@ -45,6 +45,7 @@ input,select{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(-
 .sf .g,.sf .tt{font-weight:600;background:var(--line)}.sf .off{background:var(--line)}
 .sf .tdy{background:linear-gradient(135deg,var(--ink) 50%,transparent 50%)}
 .sf th[data-day]{cursor:pointer}
+.chk{display:flex;gap:8px;align-items:center;color:var(--ink);margin:4px 0}.chk input{width:auto;padding:0}
 .sfwrap{overflow-x:auto;margin:10px 0}.sfhead{font-size:.9rem;margin:8px 0}
 .sfsum td{border:1px solid var(--mute);padding:3px 8px;font-size:.9rem}
 @media print{@page{size:landscape;margin:8mm}:root{--bg:#fff;--card:#fff;--ink:#000;--mute:#555;--line:#ddd}
@@ -86,7 +87,7 @@ nav,#toast,.noprint,main>.row,.sub{display:none!important}body{background:#fff}m
     <strong id="formTitle">Add a child</strong>
     <label for="kName">Child's name (type as Last, First Middle for SF2)</label><input id="kName" autocomplete="off">
     <label for="kSex">Sex</label><select id="kSex"><option value="">Select...</option><option value="M">Male</option><option value="F">Female</option></select>
-    <label for="kSec">Grade and section (e.g. Grade 3 - Rizal)</label><input id="kSec" autocomplete="off">
+    <label for="kSec">Grade and section (e.g. Grade 3 - Rizal)</label><select id="kSec"></select>
     <label for="kParent">Parent's name</label><input id="kParent" autocomplete="off">
     <label for="kPhone">Parent's mobile number</label><input id="kPhone" inputmode="tel" placeholder="09xx xxx xxxx">
     <label for="kEmail">Parent's email (for the parent app)</label><input id="kEmail" type="email" autocomplete="off">
@@ -118,11 +119,22 @@ nav,#toast,.noprint,main>.row,.sub{display:none!important}body{background:#fff}m
   <div id="sfOut"></div>
 </section>
 
+<section id="tab-manage">
+  <div class="card">
+    <strong>Add a grade and section</strong>
+    <label for="mGrade">Grade (e.g. Grade 3)</label><input id="mGrade" autocomplete="off">
+    <label for="mSec">Section (e.g. Rizal)</label><input id="mSec" autocomplete="off">
+    <p><button class="btn" id="addSec">Add</button></p>
+  </div>
+  <div id="secList"></div>
+</section>
+
 <section id="tab-staff">
   <div class="card">
     <strong>Add staff</strong>
     <p class="note">Creates a staff login. Give the person the email and a temporary password.</p>
     <label for="sEmail">Email</label><input id="sEmail" type="email" autocomplete="off">
+    <label for="sRole">Role</label><select id="sRole"><option value="adviser">Class adviser (sees only assigned sections)</option><option value="gate">Gate staff (taps only)</option></select>
     <label for="sPw">Temporary password (at least 6 characters)</label><input id="sPw" type="text" autocomplete="off">
     <p><button class="btn" id="addStaff">Add staff</button></p>
   </div>
@@ -136,6 +148,7 @@ nav,#toast,.noprint,main>.row,.sub{display:none!important}body{background:#fff}m
   <button role="tab" aria-selected="false" data-tab="kids">Children</button>
   <button role="tab" aria-selected="false" data-tab="log">Log</button>
   <button role="tab" aria-selected="false" data-tab="sf2">SF2</button>
+  <button role="tab" aria-selected="false" data-tab="manage" id="navManage" hidden>Manage</button>
   <button role="tab" aria-selected="false" data-tab="staff" id="navStaff" hidden>Staff</button>
 </nav>
 <div id="toast" role="status"></div>
@@ -156,15 +169,15 @@ const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
 const auth2=getAuth(initializeApp(firebaseConfig,'creator')); // used only to create staff logins without signing you out
 
 const COOLDOWN=60000;
-let kids=[],logs=[],assigning=null,lastTap={},unsub=[],staffList=[];
+let myRole='',mySecs=[],secList=[],kids=[],logs=[],assigning=null,lastTap={},unsub=[],staffList=[];
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=t=>new Date(t).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'});
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2600)}
 
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
-  document.querySelectorAll('nav button').forEach(x=>x.setAttribute('aria-selected',x===b));
-  document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id==='tab-'+b.dataset.tab))});
+function showTab(t){document.querySelectorAll('nav button').forEach(x=>x.setAttribute('aria-selected',x.dataset.tab===t));
+  document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id==='tab-'+t))}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 
 // --- auth
 $('inBtn').onclick=()=>signInWithEmailAndPassword(auth,$('em').value.trim(),$('pw').value).catch(()=>toast('Incorrect email or password.'));
@@ -172,13 +185,20 @@ $('outBtn').onclick=()=>signOut(auth);
 onAuthStateChanged(auth,async user=>{
   unsub.forEach(u=>u());unsub=[];
   let admin=false;
-  if(user){let ok=false;try{const sd=await getDoc(doc(db,'staff',user.uid));ok=sd.exists();admin=ok&&sd.data().role==='admin'}catch(e){}
+  if(user){let ok=false;try{const sd=await getDoc(doc(db,'staff',user.uid));ok=sd.exists();if(ok){myRole=sd.data().role||'staff';mySecs=sd.data().sections||[]}admin=ok&&myRole==='admin'}catch(e){}
     if(!ok){$('loginMsg').textContent='This account is not a staff account. Check the staff document in Firestore: its Document ID must be the User UID of this account.';signOut(auth);return}$('loginMsg').textContent=''}
-  $('login').hidden=!!user;$('app').hidden=!user;$('nav').hidden=!user;$('outBtn').hidden=!user;$('navStaff').hidden=!admin;
+  $('login').hidden=!!user;$('app').hidden=!user;$('nav').hidden=!user;$('outBtn').hidden=!user;$('navStaff').hidden=!admin;$('navManage').hidden=!admin;
   if(!user)return;
+  const vis={tap:myRole!=='adviser',kids:myRole==='admin'||myRole==='staff',log:true,sf2:myRole!=='gate'};
+  Object.entries(vis).forEach(([t,v])=>document.querySelector('nav [data-tab='+t+']').hidden=!v);
+  showTab(myRole==='adviser'?'sf2':'tap');
+  unsub.push(onSnapshot(collection(db,'sections'),s=>{secList=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>cmp(a.name,b.name));render();if(myRole==='admin')renderStaff()},()=>toast('Could not load the sections.')));
   const start=new Date();start.setHours(0,0,0,0);
-  unsub.push(onSnapshot(collection(db,'kids'),s=>{kids=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>toast('Could not load the list of children.')));
-  unsub.push(onSnapshot(query(collection(db,'log'),where('time','>=',start.getTime()),orderBy('time')),s=>{logs=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>toast('Could not load the log.')));
+  const adv=myRole==='adviser';
+  if(adv&&!mySecs.length){kids=[];logs=[];render()}
+  else{const sf=adv?[where('section','in',mySecs)]:[];
+  unsub.push(onSnapshot(adv?query(collection(db,'kids'),...sf):collection(db,'kids'),s=>{kids=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>toast('Could not load the list of children.')));
+  unsub.push(onSnapshot(query(collection(db,'log'),...sf,where('time','>=',start.getTime()),orderBy('time')),s=>{logs=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>toast('Could not load the log. A Firestore index may be needed: open the browser console (F12) and click the link.')))}
   if(admin)unsub.push(onSnapshot(collection(db,'staff'),s=>{staffList=s.docs.map(d=>({id:d.id,...d.data()}));renderStaff()},()=>toast('Could not load the staff list.')));
 });
 
@@ -210,7 +230,7 @@ async function handleTap(uid){
   if(lastTap[k.id]&&now-lastTap[k.id]<COOLDOWN){toast(k.name+': already tapped a moment ago.');return}
   lastTap[k.id]=now;
   const type=logs.filter(l=>l.kidId===k.id).length%2===0?'in':'out';
-  const entry={kidId:k.id,name:k.name,time:now,type,parentEmails:emailsOf(k)};
+  const entry={kidId:k.id,name:k.name,time:now,type,parentEmails:emailsOf(k),section:k.section||''};
   try{await addDoc(collection(db,'log'),entry)}catch(e){toast('The tap could not be saved. Check the internet connection.');return}
   showResult(k,entry);
   if(navigator.vibrate)navigator.vibrate(120)}
@@ -234,7 +254,7 @@ function setForm(k){
   $('formTitle').textContent=k?'Edit child':'Add a child';
   $('addKid').textContent=k?'Save':'Add';$('cancelEdit').hidden=!k;
   const e=k?emailsOf(k):[];
-  $('kSex').value=k?(k.sex||''):'';$('kSec').value=k?(k.section||''):'';$('kName').value=k?k.name:'';$('kParent').value=k?(k.parent||''):'';$('kPhone').value=k?k.phone:'';
+  $('kSex').value=k?(k.sex||''):'';fillKSec(k?k.section:'');$('kSec').value=k?(k.section||''):'';$('kName').value=k?k.name:'';$('kParent').value=k?(k.parent||''):'';$('kPhone').value=k?k.phone:'';
   $('kEmail').value=e[0]||'';$('kEmail2').value=e[1]||''}
 $('cancelEdit').onclick=()=>setForm(null);
 $('addKid').onclick=async()=>{
@@ -246,14 +266,14 @@ $('addKid').onclick=async()=>{
       const id=editing;
       await updateDoc(doc(db,'kids',id),{name,parent,phone,parentEmails:emails,sex,section});
       const snap=await getDocs(query(collection(db,'log'),where('kidId','==',id)));
-      for(let i=0;i<snap.docs.length;i+=400){const bt=writeBatch(db);snap.docs.slice(i,i+400).forEach(d=>bt.update(d.ref,{parentEmails:emails,name}));await bt.commit()}
+      for(let i=0;i<snap.docs.length;i+=400){const bt=writeBatch(db);snap.docs.slice(i,i+400).forEach(d=>bt.update(d.ref,{parentEmails:emails,name,section}));await bt.commit()}
       toast('Changes saved');
     }else{
       await addDoc(collection(db,'kids'),{name,parent,phone,parentEmails:emails,uid:null,sex,section});toast('Added '+name)}
     setForm(null);
   }catch(e){toast('Could not save ('+(e.code||e.message)+').')}};
 
-function render(){fillSec();
+function render(){fillSec();renderSecs();
   $('simKid').innerHTML=kids.length?kids.map(k=>`<option value="${k.id}">${esc(k.name)}</option>`).join(''):'<option value="">No children yet</option>';
   $('kidList').innerHTML=kids.length?kids.map(k=>`<div class="card"><div class="row"><div><strong>${esc(k.name)}</strong><div class="note">${k.sex==='M'?'Male':k.sex==='F'?'Female':'Sex not set'} | ${esc(k.section||'No section')}</div><div class="note">${esc(k.parent||'')} ${esc(k.phone)}</div><div class="note">${esc(emailsOf(k).join(', '))}</div></div>
    <span class="tag ${k.uid?'ok':'no'}">${k.uid?'Has card':'No card'}</span></div>
@@ -274,6 +294,24 @@ $('simBtn').onclick=async()=>{
 $('csvBtn').onclick=()=>{
   const rows=['Name,Type,Time'].concat(logs.map(l=>`"${l.name}",${l.type==='in'?'Arrived':'Left'},${new Date(l.time).toLocaleString('en-PH')}`)).join('\n');
   navigator.clipboard&&navigator.clipboard.writeText(rows).then(()=>toast('CSV copied'),()=>toast('Could not copy'))};
+
+// --- manage grades and sections (admins)
+const cmp=(a,b)=>a.localeCompare(b,undefined,{numeric:true});
+function fillKSec(cur){const n=secList.map(x=>x.name);if(cur&&!n.includes(cur))n.push(cur);
+  $('kSec').innerHTML='<option value="">Select...</option>'+n.map(x=>`<option${x===cur?' selected':''}>${esc(x)}</option>`).join('')}
+function renderSecs(){fillKSec($('kSec').value);
+  $('secList').innerHTML=secList.length?secList.map(x=>{const c=kids.filter(k=>k.section===x.name).length;
+    return `<div class="card row"><div><strong>${esc(x.name)}</strong><div class="note">${c} ${c===1?'child':'children'}</div></div><button class="btn alt sm" data-sx="${x.id}">Remove</button></div>`}).join(''):'<p class="note">No grades or sections yet. Add one above.</p>';
+  document.querySelectorAll('[data-sx]').forEach(b=>b.onclick=()=>{const x=secList.find(z=>z.id===b.dataset.sx);
+    if(kids.some(k=>k.section===x.name)){toast('Move or remove its children first.');return}
+    if(confirm('Remove '+x.name+'?'))deleteDoc(doc(db,'sections',x.id)).catch(()=>toast('Could not remove.'))})}
+$('addSec').onclick=async()=>{
+  const g=$('mGrade').value.trim(),s=$('mSec').value.trim();if(!g||!s){toast('Enter the grade and the section name.');return}
+  const name=g+' - '+s;if(secList.some(x=>x.name.toLowerCase()===name.toLowerCase())){toast('That section already exists.');return}
+  try{await addDoc(collection(db,'sections'),{name});$('mSec').value='';toast('Added '+name)}
+  catch(e){toast('Could not add ('+(e.code||e.message)+'). Have the new Firestore rules been published?')}};
+
+const secBoxes=x=>`<div style="margin-top:8px"><div class="note">Sections this adviser can see:</div>${secList.length?secList.map(z=>`<label class="chk"><input type="checkbox" data-sc="${x.id}" value="${esc(z.name)}"${(x.sections||[]).includes(z.name)?' checked':''}> ${esc(z.name)}</label>`).join(''):'<div class="note">Add sections in the Manage tab first.</div>'}</div>`;
 
 // --- SF2 (Daily Attendance Report of Learners)
 // SF2-CORE-START
@@ -300,13 +338,14 @@ let sfLast=null,sfOv={};
 try{const v=JSON.parse(localStorage.getItem(SFKEY)||'{}');SFIDS.forEach(i=>{if(v[i])$(i).value=v[i]})}catch(e){}
 SFIDS.forEach(i=>$(i).onchange=()=>{try{localStorage.setItem(SFKEY,JSON.stringify(Object.fromEntries(SFIDS.map(x=>[x,$(x).value]))))}catch(e){}if(sfLast)drawSF2()});
 {const n=new Date();$('sfMonth').value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')}
-function fillSec(){const cur=$('sfSec').value,secs=[...new Set(kids.map(k=>k.section).filter(Boolean))].sort();
+function fillSec(){const cur=$('sfSec').value,secs=[...new Set([...secList.map(x=>x.name),...kids.map(k=>k.section).filter(Boolean)])].filter(x=>myRole!=='adviser'||mySecs.includes(x)).sort(cmp);
   $('sfSec').innerHTML='<option value="">All children</option>'+secs.map(x=>`<option${x===cur?' selected':''}>${esc(x)}</option>`).join('')}
 
 $('sfGo').onclick=async()=>{
   const [y,m]=($('sfMonth').value||'').split('-').map(Number);if(!y){toast('Choose a month.');return}
-  let snap;try{snap=await getDocs(query(collection(db,'log'),where('time','>=',new Date(y,m-1,1).getTime()),where('time','<',new Date(y,m,1).getTime()),orderBy('time')))}catch(e){toast('Could not load the log ('+(e.code||e.message)+').');return}
-  const sec=$('sfSec').value;
+  const sec=$('sfSec').value,cs=[where('time','>=',new Date(y,m-1,1).getTime()),where('time','<',new Date(y,m,1).getTime())];
+  if(myRole==='adviser'){if(!mySecs.length){toast('No sections are assigned to you yet.');return}cs.unshift(where('section','in',sec?[sec]:mySecs))}
+  let snap;try{snap=await getDocs(query(collection(db,'log'),...cs,orderBy('time')))}catch(e){toast(e.code==='failed-precondition'?'A Firestore index is needed. Open the browser console (F12) and click the link.':'Could not load the log ('+(e.code||e.message)+').');return}
   sfLast={y,m,sec,key:y+'-'+m,lg:snap.docs.map(d=>d.data()),ks:kids.filter(k=>!sec||k.section===sec).sort((a,b)=>a.name.localeCompare(b.name))};
   drawSF2()};
 function sfCalc(){const L=sfLast;return buildSF2(L.ks,L.lg,{year:L.y,month:L.m-1,cutoff:$('sfCut').value||'07:30',today:new Date(),overrides:sfOv[L.key]})}
@@ -339,8 +378,9 @@ $('sfCsv').onclick=()=>{if(!sfLast){toast('Generate the report first.');return}
 // --- staff management (admins only)
 function renderStaff(){
   const me=auth.currentUser&&auth.currentUser.uid;
-  $('staffList').innerHTML=staffList.length?staffList.map(x=>`<div class="card"><div class="row"><strong>${esc(x.email||x.id)}</strong><span class="tag ${x.role==='admin'?'ok':''}">${esc(x.role||'staff')}</span></div>
-   <div class="row" style="margin-top:8px">${x.email?`<button class="btn alt sm" data-r="${esc(x.email)}">Send password reset</button>`:'<span></span>'}${x.id===me?'<span class="note">You</span>':`<button class="btn alt sm" data-x="${x.id}">Remove</button>`}</div></div>`).join(''):'<p class="note">No staff yet.</p>';
+  $('staffList').innerHTML=staffList.length?staffList.map(x=>`<div class="card"><div class="row"><strong>${esc(x.email||x.id)}</strong><span class="tag ${x.role==='admin'?'ok':''}">${({admin:'Admin',adviser:'Adviser',gate:'Gate staff'})[x.role]||'Staff'}</span></div>
+   ${x.role==='adviser'?secBoxes(x):''}<div class="row" style="margin-top:8px">${x.email?`<button class="btn alt sm" data-r="${esc(x.email)}">Send password reset</button>`:'<span></span>'}${x.id===me?'<span class="note">You</span>':`<button class="btn alt sm" data-x="${x.id}">Remove</button>`}</div></div>`).join(''):'<p class="note">No staff yet.</p>';
+  document.querySelectorAll('[data-sc]').forEach(c=>c.onchange=()=>{const id=c.dataset.sc,v=[...document.querySelectorAll('[data-sc="'+id+'"]:checked')].map(z=>z.value);updateDoc(doc(db,'staff',id),{sections:v}).then(()=>toast('Sections saved'),()=>toast('Could not save.'))});
   document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>sendPasswordResetEmail(auth,b.dataset.r).then(()=>toast('Reset email sent.'),()=>toast('Could not send the reset email.')));
   document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{if(confirm('Remove this staff member? They will lose access.'))deleteDoc(doc(db,'staff',b.dataset.x)).catch(()=>toast('Could not remove.'))})}
 $('addStaff').onclick=async()=>{
@@ -348,7 +388,7 @@ $('addStaff').onclick=async()=>{
   if(!email||pw.length<6){toast('Enter an email and a password of at least 6 characters.');return}
   try{
     const c=await createUserWithEmailAndPassword(auth2,email,pw);
-    await setDoc(doc(db,'staff',c.user.uid),{role:'staff',email});
+    await setDoc(doc(db,'staff',c.user.uid),{role:$('sRole').value,email,sections:[]});
     $('sEmail').value='';$('sPw').value='';toast('Staff added.');
   }catch(e){toast(e.code==='auth/email-already-in-use'?'That email already has an account. Use a different email.':'Could not add staff ('+(e.code||e.message)+').')}
   finally{try{await signOut(auth2)}catch(x){}}};
