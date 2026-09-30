@@ -75,6 +75,13 @@ nav,#toast,.noprint,main>.row,.sub{display:none!important}body{background:#fff}m
 @media print{.sf td{height:13px}.sfg{margin-top:6px}}
 .sf th.rm{white-space:normal;font-size:.62em;font-weight:400;text-align:center}
 @media print{.sf td{height:15px}.sfg{font-size:7.5px}.sfsum td,.sfsum th{font-size:7.5px}}
+
+.sfh2{display:grid;grid-template-columns:max-content 1fr max-content 1.4fr max-content 2fr max-content 3.8fr;margin:6px 0;align-items:stretch}
+.sfh2 .l{font-weight:400;font-size:.8rem;text-align:right;padding:0 6px;align-self:center}
+.sfh2 .bx2{border:1px solid var(--ink);text-align:center;padding:4px 6px;min-height:1.9em;font-size:.9rem;overflow-wrap:anywhere}
+.sfh2 .s3{grid-column:span 3}.sfh2 .l.n{grid-column:1}
+@media(max-width:640px){.sfh2{grid-template-columns:max-content 1fr}.sfh2 .s3{grid-column:auto}.sfh2 .l{text-align:left;padding:0 8px 0 0}.sfh2 .bx2{margin:2px 0}}
+@media print{.sfh2 .l,.sfh2 .bx2{font-size:9px}.sfh2 .bx2{padding:1px 4px}}
 </style>
 </head>
 <body>
@@ -426,8 +433,8 @@ function drawSF2(){
   const tb=b=>`<table class="sf">${cg}${hd}<tbody>${b}</tbody></table>`;
   $('sfOut').innerHTML=`<div class="noprint note">Class days (tap a date to include or exclude it). A weekday counts as a class day when at least one child tapped in. Today's absences are final only after the day ends.<div style="margin:6px 0">${chips}</div></div>
   <div class="sft">School Form 2 (SF2) Daily Attendance Report of Learners</div><div class="sfs">(This replaced Form 1, Form 2 &amp; STS Form 4 - Absenteeism and Dropout Profile)</div>
-  <table class="sfm"><tr><td>School ID</td><td>${v('sfId')}</td><td>School Year</td><td>${v('sfYear')}</td><td>Report for the Month of</td><td>${mon}</td></tr>
-  <tr><td>Name of School</td><td>${v('sfSchool')}</td><td>Grade Level</td><td>${esc(grade)}</td><td>Section</td><td>${esc(section)}</td></tr></table>
+  <div class="sfh2"><b class="l">School ID</b><span class="bx2">${v('sfId')}</span><b class="l">School Year</b><span class="bx2">${v('sfYear')}</span><b class="l">Report for the Month of</b><span class="bx2">${mon}</span>
+  <b class="l n">Name of School</b><span class="bx2 s3">${v('sfSchool')}</span><b class="l">Grade Level</b><span class="bx2">${esc(grade)}</span><b class="l">Section</b><span class="bx2">${esc(section)}</span></div>
   <div class="sfwrap">${tb(blk('M','MALE',25)+blk('','SEX NOT SET',0))}</div>
   <div class="sfwrap pg">${tb(blk('F','FEMALE',20)+comb)}</div>
   <div class="sfg"><div class="gl"><span class="bx">GUIDELINES:</span>
