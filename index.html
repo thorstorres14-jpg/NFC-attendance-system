@@ -422,7 +422,7 @@ function buildSF2(ks,lg,o){
 // SF2-CORE-END
 
 const SFKEY='sf2set',SFIDS=['sfSchool','sfId','sfYear','sfAdv','sfCut','sfHead','sfEnrM','sfEnrF'];
-let sfLast=null,sfOv={},sfEditOpen=false,sfEditSel={kid:'',day:0};
+let sfLast=null,sfOv={},sfEditOpen=false,sfEditSel={kid:'',y:0,m:0,d:0},sfX=null;const SFWD=['S','M','T','W','TH','F','S'];
 try{const v=JSON.parse(localStorage.getItem(SFKEY)||'{}');SFIDS.forEach(i=>{if(v[i])$(i).value=v[i]})}catch(e){}
 SFIDS.forEach(i=>$(i).onchange=()=>{try{localStorage.setItem(SFKEY,JSON.stringify(Object.fromEntries(SFIDS.map(x=>[x,$(x).value]))))}catch(e){}if(sfLast)drawSF2()});
 {const n=new Date();$('sfMonth').value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')}
@@ -444,21 +444,55 @@ function sfCalc(){const L=sfLast;return buildSF2(L.ks,L.lg,{year:L.y,month:L.m-1
 // Attendance edits: stored apart from the taps, never deleted; every change keeps who/when and the earlier value.
 const ST={P:'Present',T:'Late',A:'Absent','':'No record'};
 const who=()=>{const u=auth.currentUser||{};return {by:u.uid||'',byEmail:u.email||''}};
-async function putAdj(id,rec,L){try{await setDoc(doc(db,'adjustments',id),rec);L.adj=(L.adj||[]).filter(a=>a.id!==id).concat([{id,...rec}]);return true}
+async function putAdj(id,rec,L){try{await setDoc(doc(db,'adjustments',id),rec);const nw=[{id,...rec}];if(rec.month===L.key)L.adj=(L.adj||[]).filter(a=>a.id!==id).concat(nw);else if(sfX&&sfX.adjm)sfX.adjm[rec.month]=(sfX.adjm[rec.month]||[]).filter(a=>a.id!==id).concat(nw);return true}
   catch(e){toast('Could not save ('+(e.code||e.message)+'). Have the rules for "adjustments" been published?');return false}}
 async function saveAdj(){const L=sfLast;if(!L)return;
-  const kid=$('adjKid').value,day=+$('adjDay').value,st=$('adjSt').value,note=$('adjNote').value.trim();
-  if(!kid||!day||!st){toast('Choose the learner, the date and the status.');return}
+  const kid=$('adjKid').value,y=+$('adjYear').value,mo=+$('adjMon').value,day=+$('adjDay').value,st=$('adjSt').value,note=$('adjNote').value.trim();
+  if(!kid||!y||!mo||!day||!st){toast('Choose the learner, the date and the status.');return}
   const k=L.ks.find(x=>x.id===kid);if(!k)return;
-  const base=buildSF2(L.ks,L.lg,{year:L.y,month:L.m-1,cutoff:$('sfCut').value||'07:30',today:new Date(),overrides:sfOv[L.key]}).rows.find(x=>x.kid.id===kid).marks[day-1]||'';
-  const id=kid+'_'+L.key+'-'+day,old=(L.adj||[]).find(a=>a.id===id);
-  const rec={kidId:kid,name:k.name,section:k.section||'',month:L.key,day,status:st,prev:base,note,...who(),at:Date.now(),
+  const key=y+'-'+mo,lgm=sfLg(y,mo),cur=key===L.key?L.adj:((sfX&&sfX.adjm[key])||[]);
+  const base=buildSF2(L.ks,lgm,{year:y,month:mo-1,cutoff:$('sfCut').value||'07:30',today:new Date(),overrides:sfOv[key]}).rows.find(x=>x.kid.id===kid).marks[day-1]||'';
+  const id=kid+'_'+key+'-'+day,old=(cur||[]).find(a=>a.id===id);
+  const rec={kidId:kid,name:k.name,section:k.section||'',month:key,day,status:st,prev:base,note,...who(),at:Date.now(),
     history:[...(old?(old.history||[]).concat([{status:old.status,by:old.byEmail||old.by,at:old.at,note:old.note||''}]):[])]};
-  if(await putAdj(id,rec,L)){sfEditSel={kid,day};toast('Saved');drawSF2()}}
+  if(await putAdj(id,rec,L)){sfEditSel={kid,y,m:mo,d:day};toast('Saved');drawSF2()}}
 async function undoAdj(id){const L=sfLast,old=(L.adj||[]).find(a=>a.id===id);if(!old)return;
   const rec={...old};delete rec.id;rec.history=(old.history||[]).concat([{status:old.status,by:old.byEmail||old.by,at:old.at,note:old.note||''}]);
   Object.assign(rec,{status:'auto',note:'Back to the tap record',...who(),at:Date.now()});
   if(await putAdj(id,rec,L)){toast('Back to the tap record');drawSF2()}}
+// Edit attendance: Month / Day / Year boxes only offer dates where the learner is absent.
+// Needs the whole year's taps, so it loads (once per Generate) when the panel is opened.
+const sfLg=(y,m)=>{const L=sfLast;return y+'-'+m===L.key?L.lg:((sfX&&sfX.yrs[y]&&sfX.yrs[y][m])||[])};
+function sfLoadX(){const L=sfLast;if(sfX&&sfX.L===L)return sfX.p;const X=sfX={L,yrs:{},adjm:{}};
+  X.p=(async()=>{const mm=String($('sfYear').value).match(/(\d{4})\D+(\d{4})/),ys=[...new Set([L.y,...(mm?[+mm[1],+mm[2]]:[])])].sort(),secs=L.sec?[L.sec]:mySecs;
+    for(const y of ys){const cs=[where('time','>=',new Date(y,0,1).getTime()),where('time','<',new Date(y+1,0,1).getTime())];
+      if(myRole==='adviser')cs.unshift(where('section','in',secs));
+      const sn=await getDocs(query(collection(db,'log'),...cs,orderBy('time'))),b={};
+      sn.docs.forEach(d=>{const l=d.data(),m=new Date(l.time).getMonth()+1;(b[m]||(b[m]=[])).push(l)});X.yrs[y]=b}
+    await Promise.all(ys.flatMap(y=>Object.keys(X.yrs[y]).map(async m=>{const key=y+'-'+m;if(key===L.key)return;
+      const ac=[where('month','==',key)];if(myRole==='adviser')ac.push(where('section','in',secs));
+      try{X.adjm[key]=(await getDocs(query(collection(db,'adjustments'),...ac))).docs.map(d=>({id:d.id,...d.data()}))}catch(e){X.adjm[key]=[]}})))})()
+    .catch(e=>{if(sfX===X)sfX=null;throw e});return X.p}
+function sfAbsFor(kidId){const L=sfLast,k=L.ks.find(x=>x.id===kidId),out={};if(!k||!sfX)return out;
+  Object.keys(sfX.yrs).forEach(y=>{for(let m=1;m<=12;m++){const key=y+'-'+m,lg=sfLg(y,m);if(!lg.length)continue;
+    const adj=key===L.key?L.adj:(sfX.adjm[key]||[]);
+    const r=buildSF2([k],lg,{year:+y,month:m-1,cutoff:$('sfCut').value||'07:30',today:new Date(),overrides:sfOv[key],adj:adjMap({adj})});
+    const ds=r.days.filter((x,i)=>x.cls&&r.rows[0].marks[i]==='A');if(ds.length)(out[y]||(out[y]={}))[m]=ds}});
+  return out}
+function sfFill(src){const L=sfLast,kid=$('adjKid').value,A=sfAbsFor(kid),ys=Object.keys(A).sort(),W=!src&&sfEditSel.kid===kid?sfEditSel:{},
+  o=(v,t,on)=>`<option value="${v}"${on?' selected':''}>${t}</option>`,MN=m=>new Date(2000,m-1,1).toLocaleString('en-PH',{month:'long'});
+  if(!ys.length){['adjYear','adjMon','adjDay'].forEach(i=>$(i).innerHTML='<option value="">No absences</option>');$('adjSave').disabled=true;return}
+  $('adjSave').disabled=false;
+  if(!src||src==='kid'){const y0=String(W.y||L.y),y=A[y0]?y0:ys[0];$('adjYear').innerHTML=ys.map(v=>o(v,v,v===y)).join('')}
+  const y=$('adjYear').value;
+  if(!src||src==='kid'||src==='year'){const ms=Object.keys(A[y]).map(Number).sort((a,b)=>a-b),m0=src==='year'?0:(W.m||L.m),m=ms.includes(m0)?m0:ms[0];
+    $('adjMon').innerHTML=ms.map(v=>o(v,MN(v),v===m)).join('')}
+  const ds=A[y][$('adjMon').value],d0=(!src&&W.d)||0,d=ds.some(x=>x.d===d0)?d0:ds[0].d;
+  $('adjDay').innerHTML=ds.map(x=>o(x.d,x.d+' ('+SFWD[x.wd]+')',x.d===d)).join('')}
+async function sfInitEdit(){const L=sfLast;if(!$('adjKid'))return;
+  ['adjMon','adjDay','adjYear'].forEach(i=>$(i).innerHTML='<option value="">Loading...</option>');$('adjSave').disabled=true;
+  try{await sfLoadX()}catch(e){toast('Could not load the other months ('+(e.code||e.message)+').');return}
+  if(sfLast===L&&$('adjKid'))sfFill()}
 function drawSF2(){
   const L=sfLast,r=sfCalc(),WD=['S','M','T','W','TH','F','S'],cd=r.days.filter(x=>x.cls),sd=cd.length;
   const cols=[];{const f=new Date(L.y,L.m-1,1),l=new Date(L.y,L.m,0),s0=new Date(f),e0=new Date(l);
@@ -494,8 +528,10 @@ function drawSF2(){
   $('sfOut').innerHTML=`<div class="noprint note">Class days (tap a date to include or exclude it). A weekday counts as a class day when at least one child tapped in. Today's absences are final only after the day ends.<br>The preview fits your screen: rotate your phone or pinch to zoom.<div style="margin:6px 0">${chips}</div></div>
   <details class="card noprint" id="adjBox"${sfEditOpen?' open':''}><summary><strong>Edit attendance</strong></summary>
   ${cd.length&&L.ks.length?`<div class="frm"><div><label for="adjKid">Learner</label><select id="adjKid">${L.ks.map(k=>`<option value="${k.id}"${k.id===sfEditSel.kid?' selected':''}>${esc(k.name)}</option>`).join('')}</select></div></div>
-  <div class="frm c2"><div><label for="adjDay">Date</label><select id="adjDay">${cd.map(x=>`<option value="${x.d}"${x.d===sfEditSel.day?' selected':''}>${monN} ${x.d} (${WD[x.wd]})</option>`).join('')}</select></div>
-  <div><label for="adjSt">Status</label><select id="adjSt"><option value="P">Present</option><option value="T">Late</option><option value="A">Absent</option></select></div></div>
+  <div class="frm c3"><div><label for="adjMon">Month</label><select id="adjMon"><option value="">Loading...</option></select></div>
+  <div><label for="adjDay">Day</label><select id="adjDay"><option value="">Loading...</option></select></div>
+  <div><label for="adjYear">Year</label><select id="adjYear"><option value="">Loading...</option></select></div></div>
+  <div class="frm"><div><label for="adjSt">Status</label><select id="adjSt"><option value="P">Present</option><option value="T">Late</option><option value="A">Absent</option></select></div></div>
   <div class="frm"><div><label for="adjNote">Note (optional)</label><input id="adjNote" autocomplete="off"></div></div>
   <p class="row"><button class="btn" id="adjSave">Save</button></p>`:'<p class="note">No class days or learners to edit yet.</p>'}
   ${(L.adj||[]).filter(a=>a.status!=='auto').sort((a,b)=>a.day-b.day).map(a=>`<div class="msg"><strong>${esc(a.name)}</strong>, ${monN} ${a.day}: ${ST[a.prev||'']} &rarr; <strong>${ST[a.status]}</strong><br><span class="note">${esc(a.byEmail||'')} ${new Date(a.at).toLocaleString('en-PH')}${a.note?' - '+esc(a.note):''}</span> <button class="btn alt sm" data-undo="${esc(a.id)}">Undo</button></div>`).join('')}</details>
@@ -520,7 +556,8 @@ function drawSF2(){
   <div class="gr"><table class="sf sfsum"><tr><td rowspan="2" class="mo">Month : ${monN}</td><td rowspan="2" class="mo">No. of Days of<br>Classes: ${sd}</td><th colspan="3">Summary</th></tr><tr><th>M</th><th>F</th><th>TOTAL</th></tr>${summ}</table>
   <p class="cert">I certify that this is a true and correct report.</p><div class="sg"><div class="pn">${v('sfAdv')}</div><div class="ln">(Signature of Adviser over Printed Name)</div></div>
   <p class="cert">Attested by:</p><div class="sg"><div class="pn">${v('sfHead')}</div><div class="ln">(Signature of School Head over Printed Name)</div></div></div></div></div></div>`;
-  {const sv=$('adjSave');if(sv)sv.onclick=saveAdj;const bx=$('adjBox');if(bx)bx.ontoggle=()=>{sfEditOpen=bx.open}}
+  {const sv=$('adjSave');if(sv)sv.onclick=saveAdj;const bx=$('adjBox');if(bx)bx.ontoggle=()=>{sfEditOpen=bx.open;if(bx.open)sfInitEdit()};
+    if($('adjKid')){$('adjKid').onchange=()=>sfFill('kid');$('adjYear').onchange=()=>sfFill('year');$('adjMon').onchange=()=>sfFill('mon');if(sfEditOpen)sfInitEdit()}}
   document.querySelectorAll('[data-undo]').forEach(b=>b.onclick=()=>undoAdj(b.dataset.undo));
   document.querySelectorAll('.dchip').forEach(h=>h.onclick=()=>{const o=sfOv[L.key]||(sfOv[L.key]={}),d=+h.dataset.day;o[d]=!r.days[d-1].cls;drawSF2()});fitSF()}
 function fitSF(){const v=document.querySelector('.sfview'),p=v&&v.firstElementChild;if(!p||!v.clientWidth)return;p.style.zoom=Math.min(1,v.clientWidth/1100)}
