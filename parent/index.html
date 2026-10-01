@@ -75,7 +75,7 @@ textarea{resize:vertical;min-height:84px}
 .kg.m .kt .tl strong{font-size:.95rem}
 .kh{margin:0 0 12px}
 .mo{position:fixed;inset:0;z-index:50;background:rgba(5,15,24,.62);display:flex;align-items:flex-end;justify-content:center}
-.ms{background:var(--bg);color:var(--ink);width:100%;max-width:520px;max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px))}
+.ms{background:var(--bg);color:var(--ink);width:100%;max-width:520px;height:min(720px,90vh);overflow:auto;border-radius:22px 22px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px))}
 @media(min-width:600px){.mo{align-items:center}.ms{border-radius:22px}}
 .seg{display:flex;gap:6px;margin:14px 0 10px}
 .seg button{flex:1;min-height:44px;border:2px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit;font-weight:500;cursor:pointer}
@@ -90,7 +90,7 @@ textarea{resize:vertical;min-height:84px}
 .ab div{border-radius:14px;padding:10px 12px}.ab .a1{background:color-mix(in srgb,var(--t-green) 14%,var(--card))}.ab .a2{background:color-mix(in srgb,var(--t-blue) 14%,var(--card))}
 .ab small{display:block;color:var(--mute);font-size:.85rem}.ab b{font-size:1.25rem}
 .st.bad{--sc:var(--t-red)}
-.wr{display:grid;grid-template-columns:1.5fr 1fr .9fr .9fr;gap:6px;align-items:center;width:100%;padding:10px 4px;border:0;border-top:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:.9rem;text-align:left;cursor:pointer}
+.wr{display:grid;grid-template-columns:1.5fr 1fr .9fr .9fr;gap:6px;align-items:center;width:100%;padding:8px 4px;border:0;border-top:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:.9rem;text-align:left;cursor:pointer}
 .wr.wh{cursor:default;color:var(--mute);font-size:.8rem;border-top:0}
 .pill.g{background:color-mix(in srgb,var(--t-green) 18%,var(--card));color:var(--t-green)}
 .pill.a{background:color-mix(in srgb,var(--t-amber) 18%,var(--card));color:var(--t-amber)}
@@ -373,7 +373,7 @@ function weekBody(days){
   return statTiles(mStats(days))+`<div class="wr wh"><span>Day</span><span>Status</span><span>In</span><span>Out</span></div>`
     +days.map(x=>{const m=MS[x.st];return `<button type="button" class="wr" data-go="${x.key}"><span>${esc(fd(x.d,{weekday:'short',month:'short',day:'numeric'}))}</span><span class="pill ${m[2]}">${m[0]}</span><span>${x.arr?tm(x.arr.time):'\u2013'}</span><span>${x.left?tm(x.left.time):'\u2013'}</span></button>`}).join('')}
 function monthBody(days){
-  const lead=days[0].getDay();
+  const lead=days[0].d.getDay();
   return statTiles(mStats(days))+`<div class="cal">${'SMTWTFS'.split('').map(c=>`<span class="hd">${c}</span>`).join('')}${'<span></span>'.repeat(lead)}${days.map(x=>`<button type="button" class="cd ${x.st}" data-go="${x.key}" aria-label="${esc(fd(x.d,{month:'long',day:'numeric'}))}: ${MS[x.st][0]}">${x.d.getDate()}</button>`).join('')}</div>`
     +`<div class="leg"><span><i style="background:var(--t-green)"></i>Present</span><span><i style="background:var(--t-amber)"></i>Late</span><span><i style="background:var(--t-red)"></i>Absent</span></div>`}
 function renderModal(){
