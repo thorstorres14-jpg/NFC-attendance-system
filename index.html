@@ -179,6 +179,8 @@ main:has(#tab-sf2.on){max-width:1180px}
   </div>
   <div class="frm c2"><div><label for="kfGrade">Grade</label><select id="kfGrade"></select></div>
     <div><label for="kfSec">Section</label><select id="kfSec"></select></div></div>
+  <div class="frm c2" id="kfAdvWrap" hidden><div><label for="kfAdv">Adviser</label><select id="kfAdv"></select></div>
+    <div><label for="kfGroup">Group by</label><select id="kfGroup"><option value="sec">Section</option><option value="adv">Adviser</option></select></div></div>
   <p class="note" id="kfCount"></p>
   <div id="kidList"></div>
 </section>
@@ -322,7 +324,7 @@ onAuthStateChanged(auth,async user=>{
   if(admin)unsub.push(onSnapshot(query(collection(db,'broadcasts'),orderBy('time','desc')),s=>{bcList=s.docs.slice(0,10).map(d=>({id:d.id,...d.data()}));renderBc()},()=>toast('Could not load past broadcasts.')));
   if(admin)unsub.push(onSnapshot(doc(db,'settings','school'),s=>{const d=s.exists()?s.data():{};$('parentEditChk').checked=!!d.parentEdit;$('parentReqChk').checked=!!d.parentRequests},()=>{}));
   if(myRole==='admin'||myRole==='staff')unsub.push(onSnapshot(query(collection(db,'changeRequests'),where('status','==','pending')),s=>{reqList=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.time-b.time);renderReq()},()=>toast('Could not load change requests.')));
-  if(admin)unsub.push(onSnapshot(collection(db,'staff'),s=>{staffList=s.docs.map(d=>({id:d.id,...d.data()}));renderStaff()},()=>toast('Could not load the staff list.')));
+  if(admin)unsub.push(onSnapshot(collection(db,'staff'),s=>{staffList=s.docs.map(d=>({id:d.id,...d.data()}));renderStaff();render()},()=>toast('Could not load the staff list.')));
 });
 
 // --- NFC scanning
@@ -744,28 +746,46 @@ function renderReq(){
   box.querySelectorAll('[data-rx]').forEach(b=>b.onclick=()=>resolve(b.dataset.rx,'declined'));
   box.querySelectorAll('[data-ro]').forEach(b=>b.onclick=()=>{const k=kids.find(x=>x.id===b.dataset.ro);if(k){setForm(k);window.scrollTo({top:document.querySelector('#formTitle').offsetTop-20,behavior:'smooth'})}else toast('Child not found.')})}
 
-// --- Children tab: filter by grade / section, grouped by section
+// --- Children tab: filter by grade / section / adviser, grouped by section or adviser
 const splitSec=x=>{const a=(x||'').split(' - ');return [a[0],a.slice(1).join(' - ')]};
+// An adviser is a staff login with that section assigned. Only admins can read the staff list.
+const advisersList=()=>staffList.filter(x=>x.role==='adviser');
+const advOf=k=>advisersList().filter(x=>(x.sections||[]).includes(k.section)).map(x=>x.id);
+const advName=id=>{const x=staffList.find(z=>z.id===id);return x?(x.email||x.id):id};
 function fillKidFilter(){
-  const g0=$('kfGrade').value,s0=$('kfSec').value,names=[...new Set([...secList.map(x=>x.name),...kids.map(k=>k.section).filter(Boolean)])],
+  const g0=$('kfGrade').value,s0=$('kfSec').value,a0=$('kfAdv').value,names=[...new Set([...secList.map(x=>x.name),...kids.map(k=>k.section).filter(Boolean)])],
     o=(v,t,on)=>`<option value="${esc(v)}"${on?' selected':''}>${esc(t)}</option>`,
     grades=[...new Set(names.map(x=>splitSec(x)[0]))].sort(cmp),g=grades.includes(g0)?g0:'',
     secs=names.filter(x=>!g||splitSec(x)[0]===g).sort(cmp),noSec=kids.some(k=>!k.section),
-    s=(secs.includes(s0)||(s0==='__none'&&noSec))?s0:'';
+    s=(secs.includes(s0)||(s0==='__none'&&noSec))?s0:'',
+    advs=advisersList().sort((x,y)=>cmp(x.email||x.id,y.email||y.id)),noAdv=kids.some(k=>!advOf(k).length),
+    a=(advs.some(x=>x.id===a0)||(a0==='__none'&&noAdv))?a0:'';
   $('kfGrade').innerHTML=o('','All grades',!g)+grades.map(x=>o(x,x,x===g)).join('');
-  $('kfSec').innerHTML=o('','All sections',!s)+secs.map(x=>o(x,g?(splitSec(x)[1]||x):x,x===s)).join('')+(noSec?o('__none','No section',s==='__none'):'')}
+  $('kfSec').innerHTML=o('','All sections',!s)+secs.map(x=>o(x,g?(splitSec(x)[1]||x):x,x===s)).join('')+(noSec?o('__none','No section',s==='__none'):'');
+  $('kfAdv').innerHTML=o('','All advisers',!a)+advs.map(x=>o(x.id,x.email||x.id,x.id===a)).join('')+(noAdv?o('__none','No adviser',a==='__none'):'');
+  $('kfAdvWrap').hidden=!advs.length}
 function viewKids(){
-  const g=$('kfGrade').value,s=$('kfSec').value,
-    list=kids.filter(k=>(!g||splitSec(k.section)[0]===g)&&(!s||(s==='__none'?!k.section:k.section===s)))
-      .sort((a,b)=>cmp(a.section||'~',b.section||'~')||cmp(a.name||'',b.name||''));
-  $('kfCount').textContent=(g||s)?`Showing ${list.length} of ${kids.length}`:`${kids.length} ${kids.length===1?'child':'children'}`;
-  const out=[];let cur=null;
-  list.forEach(k=>{const sec=k.section||'No section';
-    if(sec!==cur){cur=sec;out.push({_h:`${sec} (${list.filter(x=>(x.section||'No section')===sec).length})`})}
-    out.push(k)});
+  const g=$('kfGrade').value,s=$('kfSec').value,a=$('kfAdv').value,byAdv=!$('kfAdvWrap').hidden&&$('kfGroup').value==='adv',
+    list=kids.filter(k=>(!g||splitSec(k.section)[0]===g)&&(!s||(s==='__none'?!k.section:k.section===s))
+        &&(!a||(a==='__none'?!advOf(k).length:advOf(k).includes(a))))
+      .sort((x,y)=>cmp(x.section||'~',y.section||'~')||cmp(x.name||'',y.name||''));
+  $('kfCount').textContent=(g||s||a)?`Showing ${list.length} of ${kids.length}`:`${kids.length} ${kids.length===1?'child':'children'}`;
+  const out=[];
+  if(byAdv){
+    const groups={};
+    list.forEach(k=>{let ids=advOf(k);if(a&&a!=='__none')ids=ids.filter(id=>id===a);if(!ids.length)ids=['__none'];ids.forEach(id=>(groups[id]=groups[id]||[]).push(k))});
+    const label=id=>id==='__none'?'No adviser':advName(id);
+    Object.keys(groups).sort((x,y)=>x==='__none'?1:y==='__none'?-1:cmp(label(x),label(y))).forEach(id=>{out.push({_h:`${label(id)} (${groups[id].length})`});groups[id].forEach(k=>out.push(k))})
+  }else{
+    let cur=null;
+    list.forEach(k=>{const sec=k.section||'No section';
+      if(sec!==cur){cur=sec;out.push({_h:`${sec} (${list.filter(x=>(x.section||'No section')===sec).length})`})}
+      out.push(k)})}
   return out}
 $('kfGrade').onchange=()=>{$('kfSec').value='';render()};
 $('kfSec').onchange=()=>render();
+$('kfAdv').onchange=()=>render();
+$('kfGroup').onchange=()=>render();
 </script>
 </body>
 </html>
