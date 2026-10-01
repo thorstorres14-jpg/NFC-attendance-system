@@ -129,6 +129,49 @@ body.modal-open{overflow:hidden}
 .frm{display:grid;gap:8px}.frm>div{min-width:0}.frm.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .frm.c2{grid-template-columns:repeat(2,minmax(0,1fr))}.frm.c2s{grid-template-columns:minmax(0,1fr) minmax(0,1.7fr)}
 @media(max-width:340px){.frm.c3,.frm.c2,.frm.c2s{grid-template-columns:1fr}}
+
+/* ---------- Responsive layout: phone (default) / tablet (700px+) / laptop & desktop (1000px+) ---------- */
+button{cursor:pointer}
+@media screen and (min-width:700px){
+  main{max-width:780px;padding:24px 24px 96px}
+  .modal-box{max-width:640px;padding:20px}
+  /* long lists flow into columns */
+  #kidList,#logList,#bcList,#secList,#staffList{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:start;margin-bottom:12px}
+  #kidList>.card,#logList>.card,#bcList>.card,#secList>.card,#staffList>.card{margin-bottom:0}
+  #kidList>.day,#bcList>strong,#kidList>p,#logList>p,#staffList>p,#secList>p{grid-column:1/-1}
+  #kidList>.day{font-weight:600;color:var(--mute);margin:8px 2px 0}
+  /* Children filters on one line */
+  .kfbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:0 12px;align-items:end}
+  .kfbar>.row,.kfbar>.sr{grid-column:1/-1}
+  .kfbar>.sr{margin-bottom:0}
+  #tab-sf2>.card,#tab-sf2>details.card{max-width:780px}
+}
+@media screen and (min-width:1000px){
+  /* side menu instead of the bottom bar */
+  nav{top:0;right:auto;width:230px;flex-direction:column;justify-content:flex-start;gap:6px;padding:28px 14px;border-top:0;border-right:1px solid var(--line)}
+  nav button{flex:none;max-width:none;text-align:left;padding:12px 16px;font-size:1rem}
+  body:has(#nav:not([hidden])){padding-left:230px}
+  main{max-width:1180px;padding:28px 36px 48px}
+  #toast{left:calc(50% + 115px);bottom:24px}
+  #login,#pwCard{max-width:420px;margin-left:auto;margin-right:auto}
+  #login{margin-top:56px}
+  .zone{margin-bottom:0}
+  /* Tap tab: scanner on the left, "try without NFC" on the right */
+  #tab-tap.on{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start}
+  #tab-tap>.zone{grid-column:1;grid-row:1}#tab-tap>#result{grid-column:1;grid-row:2}#tab-tap>.card{grid-column:2;grid-row:1/span 2;margin:0}
+  /* Staff tab: add form on the left, staff list on the right */
+  #tab-staff.on{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:16px;align-items:start}
+  #tab-staff>.card{margin:0}
+  /* Manage > Grades & sections */
+  #mp-sec:not([hidden]){display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:16px;align-items:start}
+  #mp-sec>.card{margin:0}
+  #mp-acc>.card{max-width:640px}
+  .seg{max-width:620px}
+}
+@media screen and (min-width:1000px) and (hover:hover){
+  nav button:not([aria-selected="true"]):hover{background:var(--bg);color:var(--ink)}
+  .btn:hover{filter:brightness(1.08)}.btn.alt:hover{background:var(--bg)}
+}
 </style>
 </head>
 <body>
@@ -191,12 +234,14 @@ body.modal-open{overflow:hidden}
     <p class="row" style="margin-top:12px"><button class="btn" id="addKid">Add</button><button class="btn alt" id="cancelEdit" type="button">Cancel</button></p>
     </div>
   </div>
+  <div class="kfbar">
   <div class="sr"><input id="kfQ" type="search" placeholder="Search child or parent name" aria-label="Search children" autocomplete="off"></div>
   <div class="frm c2"><div><label for="kfGrade">Grade</label><select id="kfGrade"></select></div>
     <div><label for="kfSec">Section</label><select id="kfSec"></select></div></div>
   <div class="frm c2" id="kfAdvWrap" hidden><div><label for="kfAdv">Adviser</label><select id="kfAdv"></select></div>
     <div><label for="kfGroup">Group by</label><select id="kfGroup"><option value="sec">Section</option><option value="adv">Adviser</option></select></div></div>
   <div class="row" style="margin:8px 0"><span class="note" id="kfCount"></span><button class="btn alt sm" id="kfClear" type="button" hidden>Clear filters</button></div>
+  </div>
   <div id="kidList"></div>
 </section>
 
