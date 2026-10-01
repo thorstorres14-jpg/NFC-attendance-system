@@ -280,7 +280,7 @@ body.modal-open{overflow:hidden}
     <div class="frm"><div><label for="sEmail">Email</label><input id="sEmail" type="email" autocomplete="off"></div></div>
     <div class="frm c2"><div><label for="sPhone">Contact number</label><input id="sPhone" inputmode="tel" placeholder="09xx xxx xxxx" autocomplete="off"></div>
       <div><label for="sGender">Gender</label><select id="sGender"><option value="">Select...</option><option value="M">Male</option><option value="F">Female</option></select></div></div>
-    <div class="frm"><div><label for="sRole">Role</label><select id="sRole"><option value="adviser">Teacher / Class adviser (sees only assigned sections)</option><option value="gate">Gate staff (taps only)</option></select></div></div>
+    <div class="frm"><div><label for="sRole">Role</label><select id="sRole"><option value="adviser">Teacher / Class adviser (sees only assigned sections)</option><option value="gate">Gate staff (taps only)</option><option value="admin">Admin (full control of the app)</option></select></div></div>
     <div class="frm c2" id="sAdvWrap"><div><label for="sGrade">Advisory grade</label><select id="sGrade"></select></div>
       <div><label for="sSecName">Advisory section</label><select id="sSecName"></select></div></div>
     <div class="frm"><div><label for="sPw">Temporary password (at least 6 characters)</label><input id="sPw" type="text" autocomplete="off"></div></div>
@@ -775,6 +775,7 @@ $('addStaff').onclick=async()=>{
   if(role==='adviser'){const g=$('sGrade').value,sc=$('sSecName').value;
     if(g&&!sc&&secList.some(z=>z.name.startsWith(g+' - '))){toast('Choose the advisory section too.');return}
     const cv=sc?g+' - '+sc:g;sec=cv&&secList.some(z=>z.name===cv)?cv:''}
+  if(role==='admin'&&!confirm('Make '+name+' an ADMIN?\n\nAdmins can control everything in the app: children, attendance, staff, announcements and settings. They can also add or remove other staff.'))return;
   try{
     const c=await createUserWithEmailAndPassword(auth2,email,pw);
     await setDoc(doc(db,'staff',c.user.uid),{role,email,name,phone,gender,sections:sec?[sec]:[]});
