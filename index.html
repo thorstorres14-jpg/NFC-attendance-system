@@ -38,6 +38,10 @@ input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1.5px so
 .tag.ok{color:var(--ok)}.tag.no{color:var(--bad)}
 .warn{border:1.5px solid var(--bad);background:color-mix(in srgb,var(--bad) 12%,var(--card));border-radius:16px;padding:12px 14px;margin-bottom:12px}
 .warn strong{color:var(--bad);font-size:1.05rem}.warn.clear{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--card))}.warn.clear strong{color:var(--ok)}
+#wm{position:fixed;top:0;left:0;right:0;bottom:64px;z-index:5;pointer-events:none;background:center/min(72vw,440px) no-repeat;opacity:.07}
+@media (prefers-color-scheme:dark){#wm{opacity:.09}}
+@media screen and (min-width:1000px){#wm{left:230px;bottom:0;background-size:min(48vw,520px)}}
+@media print{#wm{display:none!important}}
 .ihd{font-weight:600;color:var(--mute);margin:12px 2px 6px}
 .nbadge{display:inline-block;min-width:1.5em;margin-left:5px;padding:0 6px;border-radius:99px;background:var(--bad);color:#fff;font-size:.75rem;line-height:1.5}
 .note{font-size:.88rem;color:var(--mute)}
@@ -280,6 +284,7 @@ button{cursor:pointer}
 </div>
 
 <div id="app" hidden>
+<div id="wm" aria-hidden="true" hidden></div>
 <section id="tab-tap" class="on">
   <div class="hero" id="hero">
     <div class="hero-brand">
@@ -1043,6 +1048,7 @@ function renderBrand(){
   [['heroLogo','heroMono'],['navLogo','navMono']].forEach(([i,m])=>{
     const im=$(i),mo=$(m);im.hidden=!schLogo;if(schLogo)im.src=schLogo;
     mo.hidden=!!schLogo;if(!schLogo){if(ini)mo.textContent=ini;else mo.innerHTML=MONOSVG}});
+  {const w=$('wm');w.hidden=!schLogo;w.style.backgroundImage=schLogo?'url("'+schLogo+'")':''}
   $('schLogoPrev').hidden=!schLogo;$('schLogoNone').hidden=!!schLogo;$('schLogoDel').hidden=!schLogo;
   if(schLogo)$('schLogoPrev').src=schLogo;
   $('heroName').textContent=nm;$('heroName').hidden=!nm;$('heroSet').hidden=!!nm;
