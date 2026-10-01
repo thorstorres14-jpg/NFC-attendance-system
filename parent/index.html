@@ -162,7 +162,7 @@ function start(user){$('pwBtn').hidden=false;
   const em=user.email.toLowerCase();
   unsubC=[
     onSnapshot(query(collection(db,'kids'),where('parentEmails','array-contains',em)),s=>{myKids=s.docs.map(d=>({id:d.id,...d.data()}));renderContacts()},()=>{}),
-    onSnapshot(doc(db,'settings','school'),s=>{parentEdit=!!(s.exists()&&s.data().parentEdit);renderContacts()},()=>{parentEdit=false;renderContacts()}),
+    onSnapshot(doc(db,'settings','school'),s=>{const d=s.exists()?s.data():{};parentEdit=!!d.parentEdit;parentReq=!!d.parentRequests;renderContacts()},()=>{parentEdit=false;parentReq=false;renderContacts()}),
     onSnapshot(query(collection(db,'changeRequests'),where('parentEmail','==',em)),s=>{myReqs=s.docs.map(d=>({id:d.id,...d.data()}));renderContacts()},()=>{})];
   setAlertBox()}
 
@@ -207,7 +207,7 @@ function render(logs){
     return `<div class="card"><div class="row"><span class="big">${esc(l.name)}</span><span class="pill ${today&&l.type==='in'?'in':''}">${st}</span></div>${days}</div>`}).join('')}
 
 // --- contact details and change requests
-let myKids=[],myReqs=[],parentEdit=false,open={};
+let myKids=[],myReqs=[],parentEdit=false,parentReq=false,open={};
 const reqTxt={pending:'Waiting for the school',done:'Done',declined:'Declined'};
 const okPhone=v=>/^[0-9+\-() ]{7,30}$/.test(v)&&v.replace(/\D/g,'').length>=7;
 function renderContacts(){if(Object.keys(open).length)return;drawContacts()}
@@ -228,7 +228,7 @@ function drawContacts(){
       <p class="row"><button class="btn" data-act="send" data-id="${k.id}">Send to the school</button><button class="btn alt sm" data-act="cancel" data-id="${k.id}">Cancel</button></p>`;
     else body=`<div class="row"><span class="note">Mobile</span><span>${esc(k.phone||'Not set')}</span></div>
       <div class="row"><span class="note">Alternate</span><span>${esc(alt)}</span></div>
-      <p class="row">${parentEdit?`<button class="btn alt sm" data-act="edit" data-id="${k.id}">Edit contact details</button>`:'<span></span>'}<button class="btn alt sm" data-act="req" data-id="${k.id}">Request a change</button></p>`
+      <p class="row">${parentEdit?`<button class="btn alt sm" data-act="edit" data-id="${k.id}">Edit contact details</button>`:'<span></span>'}${parentReq?`<button class="btn alt sm" data-act="req" data-id="${k.id}">Request a change</button>`:''}</p>`
       +reqs.map(r=>`<div class="note" style="margin-top:6px">${esc(fdt(r.time))}: ${esc(r.message.slice(0,80))}${r.message.length>80?'...':''} <span class="pill ${r.status==='done'?'in':''}">${esc(reqTxt[r.status]||r.status)}</span>${r.note?`<div>School: ${esc(r.note)}</div>`:''}</div>`).join('');
     return `<div class="card"><div class="row"><span class="big">${esc(k.name)}</span>${k.section?`<span class="pill">${esc(k.section)}</span>`:''}</div>${body}</div>`}).join('')}
 $('contacts').onclick=async e=>{
@@ -252,7 +252,7 @@ $('contacts').onclick=async e=>{
     b.disabled=true;
     try{await addDoc(collection(db,'changeRequests'),{kidId:id,kidName:String(k.name||'').slice(0,120),section:String(k.section||'').slice(0,80),parentEmail:auth.currentUser.email,message:msg.slice(0,500),time:Date.now(),status:'pending'});
       open={};drawContacts();toast('Sent to the school.')}
-    catch(err){b.disabled=false;toast('Could not send. Please try again.')}}};
+    catch(err){b.disabled=false;toast(err.code==='permission-denied'?'The school is not accepting change requests right now.':'Could not send. Please try again.')}}};
 </script>
 </body>
 </html>
