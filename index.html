@@ -17,7 +17,7 @@ h1{font-size:1.5rem;margin:8px 0 2px;font-weight:600}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:6px;justify-content:center;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line)}
 nav button{flex:1;max-width:170px;padding:10px 4px;border:0;border-radius:12px;background:transparent;color:var(--mute);font:inherit;font-size:.85rem;font-weight:500}
 nav button[aria-selected="true"]{background:var(--acc);color:var(--acc-ink)}
-button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 section{display:none}section.on{display:block}
 .zone{display:grid;place-items:center;text-align:center;min-height:250px;padding:24px;border-radius:28px;background:var(--card);border:2px dashed var(--line);margin-bottom:14px}
 .zone.live{border-color:var(--acc)}
@@ -33,10 +33,11 @@ section{display:none}section.on{display:block}
 .row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .msg{background:var(--bg);border-radius:10px;padding:10px;margin:8px 0;font-size:.95rem}
 label{display:block;font-size:.9rem;color:var(--mute);margin:8px 0 2px}
-input,select{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
+input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
 .tag{font-size:.8rem;padding:2px 8px;border-radius:99px;background:var(--bg);color:var(--mute)}
 .tag.ok{color:var(--ok)}.tag.no{color:var(--bad)}
 .note{font-size:.88rem;color:var(--mute)}
+textarea{resize:vertical;min-height:96px}
 #toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%;text-align:center}
 #toast.on{opacity:1}
 .sf{border-collapse:collapse;font-size:11px;color:var(--ink)}
@@ -206,6 +207,14 @@ main:has(#tab-sf2.on){max-width:1180px}
 
 <section id="tab-manage">
   <div class="card">
+    <strong>Broadcast to all parents</strong>
+    <p class="note">Appears in every parent's Tap-In app right away. Use it for urgent notices such as class suspensions.</p>
+    <label for="bcTitle">Title (optional)</label><input id="bcTitle" maxlength="100" autocomplete="off" placeholder="School announcement">
+    <label for="bcBody">Message</label><textarea id="bcBody" maxlength="1000" placeholder="Due to the weather conditions, there will be no classes tomorrow because of the typhoon."></textarea>
+    <p><button class="btn" id="bcSend">Send to all parents</button></p>
+    <div id="bcList"></div>
+  </div>
+  <div class="card">
     <strong>Add a grade and section</strong>
     <label for="mGrade">Grade (e.g. Grade 3)</label><input id="mGrade" autocomplete="off">
     <label for="mSec">Section (e.g. Rizal)</label><input id="mSec" autocomplete="off">
@@ -298,6 +307,7 @@ onAuthStateChanged(auth,async user=>{
   else{const sf=adv?[where('section','in',mySecs)]:[];
   unsub.push(onSnapshot(adv?query(collection(db,'kids'),...sf):collection(db,'kids'),s=>{kids=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>toast('Could not load the list of children.')));
   unsub.push(onSnapshot(query(collection(db,'log'),...sf,where('time','>=',start.getTime()),orderBy('time')),s=>{logs=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>toast('Could not load the log. A Firestore index may be needed: open the browser console (F12) and click the link.')))}
+  if(admin)unsub.push(onSnapshot(query(collection(db,'broadcasts'),orderBy('time','desc')),s=>{bcList=s.docs.slice(0,10).map(d=>({id:d.id,...d.data()}));renderBc()},()=>toast('Could not load past broadcasts.')));
   if(admin)unsub.push(onSnapshot(collection(db,'staff'),s=>{staffList=s.docs.map(d=>({id:d.id,...d.data()}));renderStaff()},()=>toast('Could not load the staff list.')));
 });
 
@@ -686,6 +696,21 @@ $('addStaff').onclick=async()=>{
     $('sEmail').value='';$('sPw').value='';toast('Staff added.');
   }catch(e){toast(e.code==='auth/email-already-in-use'?'That email already has an account. Use a different email.':'Could not add staff ('+(e.code||e.message)+').')}
   finally{try{await signOut(auth2)}catch(x){}}};
+
+// --- broadcast to all parents (admins only)
+let bcList=[];
+function renderBc(){
+  $('bcList').innerHTML=bcList.length?'<strong>Recent broadcasts</strong>'+bcList.map(b=>`<div class="card"><div class="row"><strong>${esc(b.title||'School announcement')}</strong><span class="note">${new Date(b.time).toLocaleString('en-PH',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</span></div><p style="white-space:pre-wrap;margin:6px 0">${esc(b.body)}</p><button class="btn alt sm" data-bd="${b.id}">Delete</button></div>`).join(''):'';
+  document.querySelectorAll('[data-bd]').forEach(b=>b.onclick=()=>{if(confirm('Delete this broadcast? Parents will no longer see it.'))deleteDoc(doc(db,'broadcasts',b.dataset.bd)).catch(()=>toast('Could not delete.'))})}
+$('bcSend').onclick=async()=>{
+  const title=$('bcTitle').value.trim()||'School announcement',body=$('bcBody').value.trim();
+  if(!body){toast('Write a message first.');return}
+  if(!confirm('Send this to ALL parents now?\n\n'+title+'\n'+body))return;
+  $('bcSend').disabled=true;
+  try{await addDoc(collection(db,'broadcasts'),{title,body,time:Date.now(),by:auth.currentUser.uid,byEmail:auth.currentUser.email||''});
+    $('bcTitle').value='';$('bcBody').value='';toast('Sent to all parents.')}
+  catch(e){toast('Could not send ('+(e.code||'error')+').')}
+  finally{$('bcSend').disabled=false}};
 </script>
 </body>
 </html>
