@@ -14,6 +14,16 @@ service cloud.firestore {
     function myAdvised(sec) {
       return isStaff() && me().role == 'adviser' && sec in me().get('sections', []);
     }
+    // School-wide switch (admins set it in the Manage tab) that lets parents edit contact details.
+    function parentEditOn() {
+      return exists(/databases/$(database)/documents/settings/school)
+        && get(/databases/$(database)/documents/settings/school).data.get('parentEdit', false) == true;
+    }
+    // School-wide switch that lets parents send change requests.
+    function parentRequestsOn() {
+      return exists(/databases/$(database)/documents/settings/school)
+        && get(/databases/$(database)/documents/settings/school).data.get('parentRequests', false) == true;
+    }
     function isParent(emails) {
       return request.auth != null
         && request.auth.token.email_verified == true
@@ -37,9 +47,63 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // Broadcast messages to all parents. Only admins send or delete; verified accounts (parents) and staff read.
+    match /broadcasts/{id} {
+      allow read: if isStaff() || (request.auth != null && request.auth.token.email_verified == true);
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly(['title', 'body', 'time', 'by', 'byEmail'])
+        && request.resource.data.title is string && request.resource.data.title.size() <= 100
+        && request.resource.data.body is string && request.resource.data.body.size() > 0 && request.resource.data.body.size() <= 1000
+        && request.resource.data.time is number
+        && request.resource.data.by == request.auth.uid;
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
     match /kids/{id} {
       allow read: if canTap() || myAdvised(resource.data.get('section', '')) || isParent(resource.data.parentEmails);
-      allow write: if canManage();
+      allow create, delete: if canManage();
+      // Parents may change contact details only, and only while the school has the switch on.
+      allow update: if canManage()
+        || (isParent(resource.data.parentEmails)
+            && parentEditOn()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['phone', 'altName', 'altPhone', 'contactUpdatedAt', 'contactUpdatedBy'])
+            && request.resource.data.phone is string
+            && request.resource.data.phone.size() >= 7 && request.resource.data.phone.size() <= 30
+            && request.resource.data.get('altName', '') is string && request.resource.data.get('altName', '').size() <= 60
+            && request.resource.data.get('altPhone', '') is string && request.resource.data.get('altPhone', '').size() <= 30
+            && request.resource.data.contactUpdatedAt is number
+            && request.resource.data.contactUpdatedBy == request.auth.token.email);
+    }
+
+    // Requests from parents to change details they cannot edit themselves.
+    match /changeRequests/{id} {
+      allow read: if canManage()
+        || (request.auth != null && request.auth.token.email_verified == true
+            && resource.data.parentEmail == request.auth.token.email);
+      allow create: if request.auth != null && request.auth.token.email_verified == true
+        && parentRequestsOn()
+        && request.resource.data.keys().hasOnly(['kidId', 'kidName', 'section', 'parentEmail', 'message', 'time', 'status'])
+        && request.resource.data.parentEmail == request.auth.token.email
+        && request.resource.data.status == 'pending'
+        && request.resource.data.kidName is string && request.resource.data.kidName.size() <= 120
+        && request.resource.data.section is string && request.resource.data.section.size() <= 80
+        && request.resource.data.message is string && request.resource.data.message.size() > 0 && request.resource.data.message.size() <= 500
+        && request.resource.data.time is number
+        && isParent(get(/databases/$(database)/documents/kids/$(request.resource.data.kidId)).data.parentEmails);
+      allow update: if canManage()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'note', 'resolvedBy', 'resolvedTime'])
+        && request.resource.data.status in ['done', 'declined']
+        && request.resource.data.get('note', '') is string && request.resource.data.get('note', '').size() <= 300;
+      allow delete: if false;
+    }
+
+    match /settings/{id} {
+      allow read: if isStaff() || (request.auth != null && request.auth.token.email_verified == true);
+      allow create, update: if isAdmin() && id == 'school'
+        && request.resource.data.keys().hasOnly(['parentEdit', 'parentRequests'])
+        && request.resource.data.get('parentEdit', false) is bool
+        && request.resource.data.get('parentRequests', false) is bool;
     }
 
     match /log/{id} {
