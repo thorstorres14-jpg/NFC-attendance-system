@@ -55,6 +55,7 @@ input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1.5px so
 @media (prefers-reduced-motion:reduce){.gbox>summary::after{transition:none}}
 .role-head #adjBox{display:none}
 #staffList>.day{font-weight:600;color:var(--mute);margin:8px 2px 0}
+button:disabled,input:disabled,select:disabled{opacity:.5;cursor:not-allowed}
 .ihd{font-weight:600;color:var(--mute);margin:12px 2px 6px}
 .nbadge{display:inline-block;min-width:1.5em;margin-left:5px;padding:0 6px;border-radius:99px;background:var(--bad);color:#fff;font-size:.75rem;line-height:1.5}
 .note{font-size:.88rem;color:var(--mute)}
@@ -587,6 +588,7 @@ onAuthStateChanged(auth,async user=>{
   const vis={tap:myRole!=='adviser'&&myRole!=='head',kids:myRole==='admin'||myRole==='staff',log:true,inside:true,sf2:myRole!=='gate',school:myRole!=='gate'};
   Object.entries(vis).forEach(([t,v])=>document.querySelector('nav [data-tab='+t+']').hidden=!v);
   document.body.classList.toggle('role-head',myRole==='head');
+  lockSchool();lockSfLogos(myRole==='head');
   showTab(myRole==='adviser'?'sf2':myRole==='head'?'inside':'tap');
   unsub.push(onSnapshot(doc(db,'settings','school'),s=>applySchool(s.exists()?s.data():{},admin),()=>{}));
   unsub.push(onSnapshot(doc(db,'settings','sf2logos'),s=>applySfLogos(s.exists()?s.data():{},admin,s.exists()),()=>{}));
@@ -1064,7 +1066,7 @@ function applySfLogos(d,admin,exists){
     if(k in d){const v=d[k]||'';try{v?localStorage.setItem(key,v):localStorage.removeItem(key)}catch(e){}setLogo(side,v||def)}
     else if(admin){let v='';try{v=localStorage.getItem(key)||''}catch(e){}if(v)miss[k]=v}});
   if(admin&&Object.keys(miss).length)pushSfLogos(miss,'Logos are now shared with every device');
-  lockSfLogos(exists&&!admin)}
+  lockSfLogos(!admin&&(exists||myRole==='head'))}
 
 // --- Tap tab header: school logo + name, and a live 12-hour clock with the date
 const SCHKEY='schoollogo';let schLogo='';
@@ -1117,9 +1119,9 @@ function applySchool(d,admin){
   cacheLogo();$('sfSchool').onchange();renderBrand();lockSchool();
   if(admin&&Object.keys(miss).length)pushSchool(miss,'School details are now shared with every device')}
 function lockSchool(){
-  const ro=schoolShared&&myRole!=='admin';
+  const ro=myRole!=='admin'&&(schoolShared||myRole==='head');
   ['sfSchool','sfYear','sfId','sfHead','sfCut','sfLunchA','sfLunchB','sfDismiss','schLogoFile','schLogoDel'].forEach(i=>{$(i).disabled=ro});
-  $('schNote').textContent=!schoolShared?'Used on every SF2 report. Saved on this device.':ro?'Used on every SF2 report. The school details and logos are set by the admin for all devices.':'Used on every SF2 report. The school details and logos are shared with every device.'}
+  $('schNote').textContent=ro?'Used on every SF2 report. The school details and logos are set by the admin for all devices.':!schoolShared?'Used on every SF2 report. Saved on this device.':'Used on every SF2 report. The school details and logos are shared with every device.'}
 ['sfSchool','sfYear','sfId','sfHead','sfCut','sfLunchA','sfLunchB','sfDismiss'].forEach(i=>$(i).addEventListener('change',()=>{if(myRole==='admin')pushSchool(schoolLocal(),'School details saved for all devices')}));
 $('heroSet').onclick=()=>{showTab('school');$('sfSchool').focus()};
 ['sfSchool','sfYear'].forEach(i=>$(i).addEventListener('input',renderBrand));
