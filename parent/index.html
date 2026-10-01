@@ -287,14 +287,14 @@ function render(logs){
   const by={};
   logs.forEach(l=>(by[l.kidId]=by[l.kidId]||[]).push(l));
   if(!kidsReady)return;
-  const ids=Object.keys(by).filter(id=>myKids.some(k=>k.id===id));
-  if(!ids.length){$('kids').innerHTML='<div class="card"><strong>No records yet</strong><p class="note">No records were found for the email shown above. Records appear here once your child taps at school. If they already attend, ask the school to check that this is the email they have on file.</p></div>';return}
+  const ids=[...myKids].sort((x,y)=>String(x.name).localeCompare(String(y.name))).map(k=>k.id);
+  if(!ids.length){$('kids').innerHTML='<div class="card"><strong>No children linked yet</strong><p class="note">No children are linked to the email shown above. If your child already attends, ask the school to check that this is the email they have on file.</p></div>';return}
   const cut=Date.now()-30*864e5,S={in:['ok','In school'],back:['ok','In school'],lunch:['lunch','Out for lunch'],out:['home','Went home']},AT=t=>t==='in'||t==='back';
   const info=ids.map(id=>{
-    const a=by[id].sort((x,y)=>y.time-x.time),l=a[0],today=dk(l.time)===dk(Date.now()),k=myKids.find(x=>x.id===id)||{};
+    const a=(by[id]||[]).sort((x,y)=>y.time-x.time),l=a[0]||null,today=!!l&&dk(l.time)===dk(Date.now()),k=myKids.find(x=>x.id===id)||{};
     const tl=today?a.filter(x=>dk(x.time)===dk(Date.now())).sort((x,y)=>x.time-y.time):[];
     const arr=tl.find(x=>x.type==='in')||tl[0],left=today&&l.type==='out'?l:null;
-    return{id,a,l,today,k,arr,left,name:k.name||l.name}});
+    return{id,a,l,today,k,arr,left,name:k.name||(l&&l.name)||'Child'}});
   const tiles=info.map(o=>{
     const s=o.today?(S[o.l.type]||S.out):['none','No tap yet today'];
     const ph=o.k.photo?`<img class="ph" src="${esc(o.k.photo)}" alt="">`:`<span class="ph" aria-hidden="true">${esc(String(o.name||'?').split(/[\s,]+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase())}</span>`;
