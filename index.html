@@ -753,16 +753,26 @@ const advisersList=()=>staffList.filter(x=>x.role==='adviser');
 const advOf=k=>advisersList().filter(x=>(x.sections||[]).includes(k.section)).map(x=>x.id);
 const advName=id=>{const x=staffList.find(z=>z.id===id);return x?(x.email||x.id):id};
 function fillKidFilter(){
-  const g0=$('kfGrade').value,s0=$('kfSec').value,a0=$('kfAdv').value,names=[...new Set([...secList.map(x=>x.name),...kids.map(k=>k.section).filter(Boolean)])],
-    o=(v,t,on)=>`<option value="${esc(v)}"${on?' selected':''}>${esc(t)}</option>`,
-    grades=[...new Set(names.map(x=>splitSec(x)[0]))].sort(cmp),g=grades.includes(g0)?g0:'',
-    secs=names.filter(x=>!g||splitSec(x)[0]===g).sort(cmp),noSec=kids.some(k=>!k.section),
-    s=(secs.includes(s0)||(s0==='__none'&&noSec))?s0:'',
-    advs=advisersList().sort((x,y)=>cmp(x.email||x.id,y.email||y.id)),noAdv=kids.some(k=>!advOf(k).length),
-    a=(advs.some(x=>x.id===a0)||(a0==='__none'&&noAdv))?a0:'';
-  $('kfGrade').innerHTML=o('','All grades',!g)+grades.map(x=>o(x,x,x===g)).join('');
-  $('kfSec').innerHTML=o('','All sections',!s)+secs.map(x=>o(x,g?(splitSec(x)[1]||x):x,x===s)).join('')+(noSec?o('__none','No section',s==='__none'):'');
-  $('kfAdv').innerHTML=o('','All advisers',!a)+advs.map(x=>o(x.id,x.email||x.id,x.id===a)).join('')+(noAdv?o('__none','No adviser',a==='__none'):'');
+  // Every dropdown only offers choices that still match the other two.
+  const names=[...new Set([...secList.map(x=>x.name),...kids.map(k=>k.section).filter(Boolean)])],
+    advs=advisersList(),gOf=n=>splitSec(n)[0],secsOf=x=>x.sections||[],
+    advMatch=(n,a)=>!a||(a==='__none'?!advs.some(x=>secsOf(x).includes(n)):advs.some(x=>x.id===a&&secsOf(x).includes(n))),
+    ok=(n,g,s,a)=>(!g||gOf(n)===g)&&(!s||n===s)&&advMatch(n,a),
+    gradesFor=(s,a)=>[...new Set(names.filter(n=>ok(n,'',s,a)).map(gOf))].sort(cmp),
+    secsFor=(g,a)=>names.filter(n=>ok(n,g,'',a)).sort(cmp),
+    advsFor=(g,s)=>advs.filter(x=>names.some(n=>ok(n,g,s,'')&&secsOf(x).includes(n))).sort((x,y)=>cmp(x.email||x.id,y.email||y.id)),
+    kidIn=(k,g,s)=>(!g||gOf(k.section)===g)&&(!s||(s==='__none'?!k.section:k.section===s)),
+    noSecOk=(g,a)=>kids.some(k=>!k.section)&&!g&&(!a||a==='__none'),
+    noAdvOk=(g,s)=>kids.some(k=>!advOf(k).length&&kidIn(k,g,s)),
+    o=(v,t,on)=>`<option value="${esc(v)}"${on?' selected':''}>${esc(t)}</option>`;
+  let g=$('kfGrade').value,s=$('kfSec').value,a=$('kfAdv').value;
+  for(let i=0;i<3;i++){
+    if(g&&!gradesFor(s,a).includes(g))g='';
+    if(s&&!(secsFor(g,a).includes(s)||(s==='__none'&&noSecOk(g,a))))s='';
+    if(a&&!(advsFor(g,s).some(x=>x.id===a)||(a==='__none'&&noAdvOk(g,s))))a=''}
+  $('kfGrade').innerHTML=o('','All grades',!g)+gradesFor(s,a).map(x=>o(x,x,x===g)).join('');
+  $('kfSec').innerHTML=o('','All sections',!s)+secsFor(g,a).map(x=>o(x,g?(splitSec(x)[1]||x):x,x===s)).join('')+(noSecOk(g,a)?o('__none','No section',s==='__none'):'');
+  $('kfAdv').innerHTML=o('','All advisers',!a)+advsFor(g,s).map(x=>o(x.id,x.email||x.id,x.id===a)).join('')+(noAdvOk(g,s)?o('__none','No adviser',a==='__none'):'');
   $('kfAdvWrap').hidden=!advs.length}
 function viewKids(){
   const g=$('kfGrade').value,s=$('kfSec').value,a=$('kfAdv').value,byAdv=!$('kfAdvWrap').hidden&&$('kfGroup').value==='adv',
@@ -782,7 +792,7 @@ function viewKids(){
       if(sec!==cur){cur=sec;out.push({_h:`${sec} (${list.filter(x=>(x.section||'No section')===sec).length})`})}
       out.push(k)})}
   return out}
-$('kfGrade').onchange=()=>{$('kfSec').value='';render()};
+$('kfGrade').onchange=()=>render();
 $('kfSec').onchange=()=>render();
 $('kfAdv').onchange=()=>render();
 $('kfGroup').onchange=()=>render();
