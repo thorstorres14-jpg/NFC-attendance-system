@@ -221,7 +221,7 @@ onAuthStateChanged(auth,user=>{
   if(unsubB){unsubB();unsubB=null}
   annMax=0;annReady=false;$('ann').innerHTML='';
   allLogs=null;$('kids').innerHTML='';$('report').innerHTML='';$('annBadge').hidden=true;{const n=new Date();repY=n.getFullYear();repM=n.getMonth()}setTab('att');
-  unsubC.forEach(u=>u());unsubC=[];myKids=[];myReqs=[];open={};$('contacts').innerHTML='';
+  unsubC.forEach(u=>u());unsubC=[];kidsReady=false;myKids=[];myReqs=[];open={};$('contacts').innerHTML='';
   $('who').textContent='';
   $('outBtn').hidden=!user;$('pwBtn').hidden=!(user&&user.emailVerified);if(!user)$('pwCard').hidden=true;$('login').hidden=!!user;document.body.classList.toggle('is-login',!user);$('verify').hidden=true;$('app').hidden=true;
   if(!user)return;
@@ -245,7 +245,7 @@ function start(user){$('pwBtn').hidden=false;
     s=>renderAnn(s.docs.map(d=>({id:d.id,...d.data()}))),()=>{});
   const em=user.email.toLowerCase();
   unsubC=[
-    onSnapshot(query(collection(db,'kids'),where('parentEmails','array-contains',em)),s=>{myKids=s.docs.map(d=>({id:d.id,...d.data()}));renderContacts();if(allLogs)render(allLogs);renderReport()},()=>{}),
+    onSnapshot(query(collection(db,'kids'),where('parentEmails','array-contains',em)),s=>{kidsReady=true;myKids=s.docs.map(d=>({id:d.id,...d.data()}));renderContacts();if(allLogs)render(allLogs);renderReport()},()=>{}),
     onSnapshot(doc(db,'settings','school'),s=>{const d=s.exists()?s.data():{};parentEdit=!!d.parentEdit;parentReq=!!d.parentRequests;showBrand(d);renderContacts();renderReport()},()=>{parentEdit=false;parentReq=false;renderContacts()}),
     onSnapshot(query(collection(db,'changeRequests'),where('parentEmail','==',em)),s=>{myReqs=s.docs.map(d=>({id:d.id,...d.data()}));renderContacts()},()=>{})];
   setAlertBox()}
@@ -286,7 +286,8 @@ let histKid=null;
 function render(logs){
   const by={};
   logs.forEach(l=>(by[l.kidId]=by[l.kidId]||[]).push(l));
-  const ids=Object.keys(by);
+  if(!kidsReady)return;
+  const ids=Object.keys(by).filter(id=>myKids.some(k=>k.id===id));
   if(!ids.length){$('kids').innerHTML='<div class="card"><strong>No records yet</strong><p class="note">No records were found for the email shown above. Records appear here once your child taps at school. If they already attend, ask the school to check that this is the email they have on file.</p></div>';return}
   const cut=Date.now()-30*864e5,S={in:['ok','In school'],back:['ok','In school'],lunch:['lunch','Out for lunch'],out:['home','Went home']},AT=t=>t==='in'||t==='back';
   const info=ids.map(id=>{
@@ -318,7 +319,8 @@ $('kids').onclick=e=>{
 
 function renderReport(){
   const el=$('report');if(!allLogs){el.innerHTML='';return}
-  const ids=[...new Set([...myKids.map(k=>k.id),...allLogs.map(l=>l.kidId)])];
+  if(!kidsReady){el.innerHTML='';return}
+  const ids=myKids.map(k=>k.id);
   if(!ids.length){el.innerHTML='<div class="card"><strong>No records yet</strong><p class="note">The monthly report appears once your child taps at school.</p></div>';return}
   const now=new Date(),isCur=repY===now.getFullYear()&&repM===now.getMonth(),[ch,cm]=String(lateAfter||'07:30').split(':').map(Number),
     label=new Date(repY,repM,1).toLocaleDateString('en-PH',{month:'long',year:'numeric'}),
@@ -336,7 +338,7 @@ function renderReport(){
 $('report').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;const d=new Date(repY,repM+ +b.dataset.m,1);repY=d.getFullYear();repM=d.getMonth();renderReport()};
 
 // --- contact details and change requests
-let myKids=[],myReqs=[],parentEdit=false,parentReq=false,open={};
+let kidsReady=false,myKids=[],myReqs=[],parentEdit=false,parentReq=false,open={};
 const reqTxt={pending:'Waiting for the school',done:'Done',declined:'Declined'};
 const okPhone=v=>/^[0-9+\-() ]{7,30}$/.test(v)&&v.replace(/\D/g,'').length>=7;
 function renderContacts(){if(Object.keys(open).length)return;drawContacts()}
