@@ -48,20 +48,31 @@ textarea{resize:vertical;min-height:84px}
 .st{display:flex;gap:12px;align-items:center;padding:12px;border-radius:14px;margin:10px 0;background:color-mix(in srgb,var(--sc) 14%,var(--card))}
 .st .ic{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:var(--sc);color:var(--t-ink);flex:none}
 .st.ok{--sc:var(--t-green)}.st.lunch{--sc:var(--t-amber)}.st.home{--sc:var(--t-blue)}.st.none{--sc:var(--mute)}
-.kg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0 0 12px}
-.kt{position:relative;display:block;width:100%;height:290px;padding:0;border:0;border-radius:22px;overflow:hidden;background:var(--card);cursor:pointer;text-align:left;font:inherit;color:#fff;box-shadow:0 0 0 1px var(--line)}
+.kg{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;margin:0 0 12px}
+.kt{position:relative;display:block;width:100%;height:min(440px,118vw);padding:0;border:0;border-radius:24px;overflow:hidden;background:var(--card);cursor:pointer;text-align:left;font:inherit;color:#fff;box-shadow:0 0 0 1px var(--line)}
 .kt[aria-expanded="true"]{box-shadow:0 0 0 3px var(--focus)}
-.kt .ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:grid;place-items:center;background:var(--acc);color:var(--acc-ink);font-size:3rem;font-weight:600}
-.kt .sp{position:absolute;top:10px;left:10px;display:inline-flex;align-items:center;gap:6px;max-width:calc(100% - 20px);background:rgba(10,29,44,.84);color:#fff;font-size:.8rem;font-weight:500;padding:5px 10px;border-radius:99px}
-.kt .sp i{width:9px;height:9px;border-radius:50%;background:var(--sc);flex:none}
+.kt .ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:grid;place-items:center;background:var(--acc);color:var(--acc-ink);font-size:5rem;font-weight:600}
+.kt .sp{position:absolute;top:14px;left:14px;display:inline-flex;align-items:center;gap:8px;max-width:calc(100% - 28px);background:rgba(10,29,44,.84);color:#fff;font-size:.95rem;font-weight:500;padding:7px 14px;border-radius:99px}
+.kt .sp i{width:11px;height:11px;border-radius:50%;background:var(--sc);flex:none}
 .kt .sp.ok{--sc:#4cc790}.kt .sp.lunch{--sc:#f2b233}.kt .sp.home{--sc:#6aa7ff}.kt .sp.none{--sc:#9bbac6}
-.kt .nm{position:absolute;left:0;right:0;bottom:0;padding:12px;background:rgba(10,29,44,.88)}
-.kt .nm b{display:block;font-size:1rem;font-weight:500;line-height:1.2;overflow-wrap:anywhere}
-.kt .nm small{display:block;font-size:.8rem;color:#c3d6df;margin-top:2px}
-.kt .tl{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:.8rem;color:#9bbac6}
+.kt .nm{position:absolute;left:0;right:0;bottom:0;padding:16px;background:rgba(10,29,44,.88)}
+.kt .nm b{display:block;font-size:1.35rem;font-weight:500;line-height:1.2;overflow-wrap:anywhere}
+.kt .nm small{display:block;font-size:.95rem;color:#c3d6df;margin-top:2px}
+.kt .tl{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:.95rem;color:#9bbac6}
 .kt .tl+.tl{margin-top:3px}
-.kt .tl strong{font-size:.95rem;font-weight:500}
+.kt .tl strong{font-size:1.2rem;font-weight:500}
 .kt .tl .a{color:#4cc790}.kt .tl .l{color:#6aa7ff}.kt .tl .n{color:#9bbac6}
+.kg.m{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.kg.m .kt{height:300px;border-radius:22px}
+.kg.m .kt .ph{font-size:3rem}
+.kg.m .kt .sp{top:10px;left:10px;gap:6px;max-width:calc(100% - 20px);font-size:.8rem;padding:5px 10px}
+.kg.m .kt .sp i{width:9px;height:9px}
+.kg.m .kt .nm{padding:12px}
+.kg.m .kt .nm b{font-size:1rem}
+.kg.m .kt .nm small{font-size:.8rem}
+.kg.m .kt .tl{margin-top:8px;font-size:.8rem}
+.kg.m .kt .tl+.tl{margin-top:3px}
+.kg.m .kt .tl strong{font-size:.95rem}
 .kh{margin:0 0 12px}
 .mo{position:fixed;inset:0;z-index:50;background:rgba(5,15,24,.62);display:flex;align-items:flex-end;justify-content:center}
 .ms{background:var(--bg);color:var(--ink);width:100%;max-width:520px;max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px))}
@@ -330,7 +341,7 @@ function render(logs){
     const ph=o.k.photo?`<img class="ph" src="${esc(o.k.photo)}" alt="">`:`<span class="ph" aria-hidden="true">${esc(String(o.name||'?').split(/[\s,]+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase())}</span>`;
     const A=o.arr?`<strong class="a">${tm(o.arr.time)}</strong>`:'<strong class="n">&ndash;</strong>',L=o.left?`<strong class="l">${tm(o.left.time)}</strong>`:`<strong class="n">${o.today?'Not yet':'&ndash;'}</strong>`;
     return `<button type="button" class="kt" data-kid="${esc(o.id)}" aria-haspopup="dialog" aria-label="${esc(o.name)}, ${s[1]}. Open attendance details">${ph}<span class="sp ${s[0]}"><i></i>${s[1]}</span><span class="nm"><b>${esc(o.name)}</b>${o.k.section?`<small>${esc(o.k.section)}</small>`:''}<span class="tl"><span>Arrived</span>${A}</span><span class="tl"><span>Left</span>${L}</span></span></button>`}).join('');
-  $('kids').innerHTML=`<div class="kg">${tiles}</div><p class="note">Tap a card to see attendance details.</p>`;
+  $('kids').innerHTML=`<div class="kg${info.length>1?' m':''}">${tiles}</div><p class="note">Tap a card to see attendance details.</p>`;
   if(mKid)renderModal()}
 $('kids').onclick=e=>{const t=e.target.closest('[data-kid]');if(t)openModal(t.dataset.kid)};
 
