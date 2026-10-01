@@ -32,6 +32,9 @@ input{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);
 .pill.in{color:var(--ok)}
 .day{margin:12px 0 4px;font-weight:500;color:var(--mute);font-size:.9rem}
 .note{font-size:.88rem;color:var(--mute)}
+.ann{border-left:5px solid var(--line)}
+.ann.new{border-left-color:var(--sun);background:color-mix(in srgb,var(--sun) 12%,var(--card))}
+.ann p{margin:6px 0 0;white-space:pre-wrap}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%;text-align:center}
 #toast.on{opacity:1}
 </style>
@@ -65,6 +68,12 @@ input{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);
 </div>
 
 <div id="app" hidden>
+  <div id="ann"></div>
+  <div class="card" id="alertBox" hidden>
+    <strong>School alerts</strong>
+    <p class="note">Get a phone notification when the school posts a notice while this app is open or running in the background.</p>
+    <button class="btn sm" id="alertBtn">Turn on alerts</button>
+  </div>
   <div id="kids"></div>
   <div class="card" id="installBox" hidden>
     <strong>Install the app</strong>
@@ -78,7 +87,7 @@ input{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signOut,updatePassword,reauthenticateWithCredential,EmailAuthProvider} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {getFirestore,collection,query,where,onSnapshot} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getFirestore,collection,query,where,orderBy,limit,onSnapshot} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig={
   apiKey:"AIzaSyCSkppOFLolbgMJe53otK37PYUpUcIXvks",
@@ -101,7 +110,7 @@ $('installBtn').onclick=async()=>{if(!deferred)return;deferred.prompt();await de
 const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
 if(!standalone&&/iphone|ipad/i.test(navigator.userAgent)){$('installBox').hidden=false;$('installNote').textContent='In Safari, tap Share, then "Add to Home Screen".'}
 
-let signup=false,unsub=null;
+let signup=false,unsub=null,unsubB=null;
 $('swapBtn').onclick=()=>{signup=!signup;$('fpBtn').hidden=signup;$('loginTitle').textContent=signup?'Create an account':'Log in';$('goBtn').textContent=signup?'Sign up':'Log in';$('swapBtn').textContent=signup?'Have an account? Log in':'No account yet? Sign up'};
 $('goBtn').onclick=async()=>{
   const e=$('em').value.trim().toLowerCase(),p=$('pw').value;
@@ -131,6 +140,8 @@ $('chkBtn').onclick=async()=>{await auth.currentUser.reload();await auth.current
 
 onAuthStateChanged(auth,user=>{
   if(unsub){unsub();unsub=null}
+  if(unsubB){unsubB();unsubB=null}
+  annMax=0;annReady=false;$('ann').innerHTML='';
   $('who').textContent='';
   $('outBtn').hidden=!user;$('pwBtn').hidden=!(user&&user.emailVerified);if(!user)$('pwCard').hidden=true;$('login').hidden=!!user;$('verify').hidden=true;$('app').hidden=true;
   if(!user)return;
@@ -142,7 +153,34 @@ function start(user){$('pwBtn').hidden=false;
   $('verify').hidden=true;$('app').hidden=false;
   unsub=onSnapshot(query(collection(db,'log'),where('parentEmails','array-contains',user.email.toLowerCase())),
     s=>render(s.docs.map(d=>d.data())),
-    err=>toast('Could not load the records ('+(err.code||'error')+').'))}
+    err=>toast('Could not load the records ('+(err.code||'error')+').'));
+  unsubB=onSnapshot(query(collection(db,'broadcasts'),orderBy('time','desc'),limit(10)),
+    s=>renderAnn(s.docs.map(d=>({id:d.id,...d.data()}))),()=>{});
+  setAlertBox()}
+
+// --- school announcements (broadcasts)
+const SEEN='tapin_seen_broadcast';
+let annMax=0,annReady=false,annItems=[];
+const getSeen=()=>{try{return +localStorage.getItem(SEEN)||0}catch(e){return 0}};
+const setSeen=t=>{try{localStorage.setItem(SEEN,String(t))}catch(e){}};
+const fdt=t=>new Date(t).toLocaleString('en-PH',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+function setAlertBox(){$('alertBox').hidden=!('Notification' in window)||Notification.permission!=='default'}
+$('alertBtn').onclick=async()=>{try{await Notification.requestPermission()}catch(e){}setAlertBox();
+  toast(Notification.permission==='granted'?'Alerts are on.':'Alerts were not allowed on this device.')};
+function notify(b){
+  if(!('Notification' in window)||Notification.permission!=='granted'||!navigator.serviceWorker)return;
+  navigator.serviceWorker.ready.then(r=>r.showNotification(b.title||'School announcement',{body:b.body,icon:'icon-192.png',badge:'icon-192.png',tag:'tapin-'+b.id})).catch(()=>{})}
+function renderAnn(items){
+  annItems=items;
+  const newest=items.length?items[0].time:0;
+  if(annReady&&newest>annMax&&getSeen()<newest)items.filter(b=>b.time>annMax).forEach(notify);
+  annMax=Math.max(annMax,newest);annReady=true;
+  const seen=getSeen(),cut=Date.now()-14*864e5,shown=items.filter(b=>b.time>=cut);
+  if(!shown.length){$('ann').innerHTML='';return}
+  const unread=shown.some(b=>b.time>seen);
+  $('ann').innerHTML='<div class="row"><strong>From the school</strong>'+(unread?'<button class="btn alt sm" id="annRead">Mark as read</button>':'')+'</div>'
+    +shown.map(b=>`<div class="card ann ${b.time>seen?'new':''}"><div class="row"><span class="big">${esc(b.title||'School announcement')}</span>${b.time>seen?'<span class="pill in">New</span>':''}</div><div class="note">${esc(fdt(b.time))}</div><p>${esc(b.body)}</p></div>`).join('');
+  const rb=$('annRead');if(rb)rb.onclick=()=>{setSeen(newest);renderAnn(annItems)}}
 
 function render(logs){
   const by={};
