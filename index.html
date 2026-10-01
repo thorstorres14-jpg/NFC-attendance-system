@@ -545,6 +545,7 @@ onAuthStateChanged(auth,async user=>{
   Object.entries(vis).forEach(([t,v])=>document.querySelector('nav [data-tab='+t+']').hidden=!v);
   showTab(myRole==='adviser'?'sf2':'tap');
   unsub.push(onSnapshot(doc(db,'settings','school'),s=>applySchool(s.exists()?s.data():{},admin),()=>{}));
+  unsub.push(onSnapshot(doc(db,'settings','sf2logos'),s=>applySfLogos(s.exists()?s.data():{},admin,s.exists()),()=>{}));
   unsub.push(onSnapshot(collection(db,'sections'),s=>{secList=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>cmp(a.name,b.name));render();if(myRole==='admin')renderStaff()},()=>toast('Could not load the sections.')));
   const start=new Date();start.setHours(0,0,0,0);
   const adv=myRole==='adviser';
@@ -944,7 +945,7 @@ $('sfCsv').onclick=()=>{if(sfMode==='s'&&sfSum)return sfSumCsv();if(!sfLast){toa
   const rows=['Name,Sex,'+cd.map(x=>x.d).join(',')+',Absent,Tardy'].concat(r.rows.map(x=>`"${x.kid.name}",${x.kid.sex||''},${r.days.map((d,i)=>d.cls?x.marks[i]:null).filter(v=>v!==null).join(',')},${x.abs},${x.tar}`)).join('\n');
   navigator.clipboard&&navigator.clipboard.writeText(rows).then(()=>toast('CSV copied (P present, T late, A absent)'),()=>toast('Could not copy'))};
 
-const SFLOGOKEY='sf2logo';let sfLogoCur=SFLOGO;
+const SFLOGOKEY='sf2logo',SFLOGOMAX=380000;let sfLogoCur=SFLOGO;
 try{const v=localStorage.getItem(SFLOGOKEY);if(v)sfLogoCur=v}catch(e){}
 $('sfLogoPrev').src=sfLogoCur;
 // --- SF2 logos (upper left / upper right): upload any time; kept on this device, resized small
@@ -957,13 +958,29 @@ function setLogo(side,u){if(side===2){sfLogoCur2=u;$('sfLogoPrev2').src=u}else{s
 function logoUp(side,def){const key=side===2?'sf2logo2':SFLOGOKEY;
   $(side===2?'sfLogoFile2':'sfLogoFile').onchange=e=>{const f=e.target.files[0];if(!f)return;if(!/^image\//.test(f.type)){toast('Choose an image file.');return}
     const im=new Image(),u=URL.createObjectURL(f);
-    im.onload=()=>{const sc=Math.min(1,512/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
-      c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);const d=c.toDataURL('image/png');
+    im.onload=()=>{let sc=Math.min(1,512/Math.max(im.width,im.height)),d='';
+      for(let n=0;n<5;n++){const c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*sc));c.height=Math.max(1,Math.round(im.height*sc));
+        c.getContext('2d').drawImage(im,0,0,c.width,c.height);d=c.toDataURL('image/png');if(d.length<=SFLOGOMAX)break;sc*=.7}
+      URL.revokeObjectURL(u);e.target.value='';
+      if(d.length>SFLOGOMAX){toast('That logo is too detailed. Try a simpler image.');return}
       try{localStorage.setItem(key,d)}catch(x){toast('Could not keep the logo on this device; it will reset on reload.')}
-      setLogo(side,d);toast('Logo updated');e.target.value=''};
+      setLogo(side,d);if(myRole==='admin')pushSfLogos({[side===2?'right':'left']:d},'Logo saved for all devices');else toast('Logo updated')};
     im.onerror=()=>toast('Could not read that image.');im.src=u};
-  $(side===2?'sfLogoReset2':'sfLogoReset').onclick=()=>{try{localStorage.removeItem(key)}catch(e){}setLogo(side,def);toast('Default logo restored')}}
+  $(side===2?'sfLogoReset2':'sfLogoReset').onclick=()=>{try{localStorage.removeItem(key)}catch(e){}setLogo(side,def);if(myRole==='admin')pushSfLogos({[side===2?'right':'left']:''},'Default logo restored for all devices');else toast('Default logo restored')}}
 logoUp(1,SFLOGO);logoUp(2,SFLOGO2);
+// The two SF2 logos are one shared record (settings/sf2logos), like the school details. An empty value means the default logo.
+async function pushSfLogos(part,msg){
+  if(myRole!=='admin')return;
+  try{await setDoc(doc(db,'settings','sf2logos'),part,{merge:true});toast(msg||'Logo saved for all devices')}
+  catch(e){toast('Saved on this device only. Publish the new firestore.rules to share it with other devices.')}}
+function lockSfLogos(ro){['sfLogoFile','sfLogoFile2','sfLogoReset','sfLogoReset2'].forEach(i=>{$(i).disabled=ro})}
+function applySfLogos(d,admin,exists){
+  const miss={};
+  [[1,'left',SFLOGOKEY,SFLOGO],[2,'right','sf2logo2',SFLOGO2]].forEach(([side,k,key,def])=>{
+    if(k in d){const v=d[k]||'';try{v?localStorage.setItem(key,v):localStorage.removeItem(key)}catch(e){}setLogo(side,v||def)}
+    else if(admin){let v='';try{v=localStorage.getItem(key)||''}catch(e){}if(v)miss[k]=v}});
+  if(admin&&Object.keys(miss).length)pushSfLogos(miss,'Logos are now shared with every device');
+  lockSfLogos(exists&&!admin)}
 
 // --- Tap tab header: school logo + name, and a live 12-hour clock with the date
 const SCHKEY='schoollogo';let schLogo='';
@@ -998,21 +1015,27 @@ async function pushSchool(part,msg){
   if(myRole!=='admin'){toast(msg||'Saved on this device');return}
   try{await setDoc(doc(db,'settings','school'),part,{merge:true});toast(msg||'Saved for all devices')}
   catch(e){toast('Saved on this device only. Publish the new firestore.rules to share it with other devices.')}}
+const SCHMAP=[['schoolName','sfSchool'],['schoolYear','sfYear'],['schoolId','sfId'],['schoolHead','sfHead'],['lateAfter','sfCut']];
+function schoolLocal(){return{schoolName:$('sfSchool').value.trim(),schoolYear:$('sfYear').value.trim(),schoolId:$('sfId').value.trim(),schoolHead:$('sfHead').value.trim(),lateAfter:$('sfCut').value||'07:30'}}
 function applySchool(d,admin){
-  const has=!!(d.schoolName||d.schoolYear||d.schoolLogo);
+  const has=!!(d.schoolName||d.schoolYear||d.schoolLogo||d.schoolId||d.schoolHead||d.lateAfter);
   if(!has){
     schoolShared=false;lockSchool();
-    if(admin){const n=$('sfSchool').value.trim(),y=$('sfYear').value.trim();
-      if(n||y||schLogo)pushSchool({schoolName:n,schoolYear:y,schoolLogo:schLogo},'School details are now shared with every device')}
+    if(admin){const l=schoolLocal();
+      if(l.schoolName||l.schoolYear||l.schoolId||l.schoolHead||schLogo)pushSchool(schLogo?{...l,schoolLogo:schLogo}:l,'School details are now shared with every device')}
     return}
   schoolShared=true;
-  $('sfSchool').value=d.schoolName||'';$('sfYear').value=d.schoolYear||'';schLogo=d.schoolLogo||'';
-  cacheLogo();$('sfSchool').onchange();renderBrand();lockSchool()}
+  // A field the shared record does not have yet keeps this device's value; an admin's device uploads it.
+  const miss={};
+  SCHMAP.forEach(([k,i])=>{if(k in d)$(i).value=d[k]||(k==='lateAfter'?'07:30':'');else if(admin){const v=schoolLocal()[k];if(v)miss[k]=v}});
+  if('schoolLogo' in d)schLogo=d.schoolLogo||'';else if(admin&&schLogo)miss.schoolLogo=schLogo;
+  cacheLogo();$('sfSchool').onchange();renderBrand();lockSchool();
+  if(admin&&Object.keys(miss).length)pushSchool(miss,'School details are now shared with every device')}
 function lockSchool(){
   const ro=schoolShared&&myRole!=='admin';
-  ['sfSchool','sfYear','schLogoFile','schLogoDel'].forEach(i=>{$(i).disabled=ro});
-  $('schNote').textContent=!schoolShared?'Used on every SF2 report. Saved on this device.':ro?'Used on every SF2 report. The school name, year and logo are set by the admin for all devices.':'Used on every SF2 report. The school name, year and logo are shared with every device.'}
-['sfSchool','sfYear'].forEach(i=>$(i).addEventListener('change',()=>{if(myRole==='admin')pushSchool({schoolName:$('sfSchool').value.trim(),schoolYear:$('sfYear').value.trim()},'School details saved for all devices')}));
+  ['sfSchool','sfYear','sfId','sfHead','sfCut','schLogoFile','schLogoDel'].forEach(i=>{$(i).disabled=ro});
+  $('schNote').textContent=!schoolShared?'Used on every SF2 report. Saved on this device.':ro?'Used on every SF2 report. The school details and logos are set by the admin for all devices.':'Used on every SF2 report. The school details and logos are shared with every device.'}
+['sfSchool','sfYear','sfId','sfHead','sfCut'].forEach(i=>$(i).addEventListener('change',()=>{if(myRole==='admin')pushSchool(schoolLocal(),'School details saved for all devices')}));
 $('heroSet').onclick=()=>{showTab('school');$('sfSchool').focus()};
 ['sfSchool','sfYear'].forEach(i=>$(i).addEventListener('input',renderBrand));
 renderBrand();
