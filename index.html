@@ -42,6 +42,17 @@ input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1.5px so
 @media (prefers-color-scheme:dark){#wm{opacity:.09}}
 @media screen and (min-width:1000px){#wm{left:230px;bottom:0;background-size:min(48vw,520px)}}
 @media print{#wm{display:none!important}}
+.gbox{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:12px}
+.gbox>summary{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px;cursor:pointer;list-style:none;border-radius:16px}
+.gbox>summary::-webkit-details-marker{display:none}
+.gbox>summary:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+.gbox>summary::after{content:"";flex:none;width:9px;height:9px;margin:0 4px 3px 8px;border-right:2px solid var(--mute);border-bottom:2px solid var(--mute);transform:rotate(45deg);transition:transform .15s}
+.gbox[open]>summary::after{transform:rotate(-135deg);margin-bottom:-3px}
+.gbox>summary>div{flex:1;min-width:0}
+.secgrid{padding:0 14px 2px}
+.secgrid>.card{background:var(--bg)}
+@media screen and (min-width:700px){.secgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;align-items:start}.secgrid>.card{margin-bottom:0}.secgrid{padding-bottom:14px}}
+@media (prefers-reduced-motion:reduce){.gbox>summary::after{transition:none}}
 .ihd{font-weight:600;color:var(--mute);margin:12px 2px 6px}
 .nbadge{display:inline-block;min-width:1.5em;margin-left:5px;padding:0 6px;border-radius:99px;background:var(--bad);color:#fff;font-size:.75rem;line-height:1.5}
 .note{font-size:.88rem;color:var(--mute)}
@@ -150,9 +161,9 @@ button{cursor:pointer}
   main{max-width:780px;padding:24px 24px 96px}
   .modal-box{max-width:640px;padding:20px}
   /* long lists flow into columns */
-  #kidList,#logList,#bcList,#secList,#staffList{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:start;margin-bottom:12px}
-  #kidList>.card,#logList>.card,#bcList>.card,#secList>.card,#staffList>.card{margin-bottom:0}
-  #kidList>.day,#bcList>strong,#kidList>p,#logList>p,#staffList>p,#secList>p{grid-column:1/-1}
+  #kidList,#logList,#bcList,#staffList{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:start;margin-bottom:12px}
+  #kidList>.card,#logList>.card,#bcList>.card,#staffList>.card{margin-bottom:0}
+  #kidList>.day,#bcList>strong,#kidList>p,#logList>p,#staffList>p{grid-column:1/-1}
   #kidList>.day{font-weight:600;color:var(--mute);margin:8px 2px 0}
   /* Children filters on one line */
   .kfbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:0 12px;align-items:end}
@@ -788,9 +799,15 @@ function fillKSec(cur){const n=secList.map(x=>x.name);if(cur&&!n.includes(cur))n
   const cv=sc?g+' - '+sc:g;
   $('kSec').innerHTML='<option value="">Select...</option>'+n.map(x=>`<option${x===cv?' selected':''}>${esc(x)}</option>`).join('')}
 $('kGrade').onchange=()=>fillKSec();$('kSecName').onchange=()=>fillKSec();
+const secOpen=new Set();
 function renderSecs(){fillKSec();fillStSec();
-  $('secList').innerHTML=secList.length?secList.map(x=>{const c=kids.filter(k=>k.section===x.name).length;
-    return `<div class="card row"><div><strong>${esc(x.name)}</strong><div class="note">${c} ${c===1?'child':'children'}</div></div><button class="btn alt sm" data-sx="${x.id}">Remove</button></div>`}).join(''):'<p class="note">No grades or sections yet. Add one above.</p>';
+  const sp=n=>{const a=n.split(' - ');return [a[0],a.slice(1).join(' - ')]},G={};
+  secList.forEach(x=>{const [g,sc]=sp(x.name);(G[g]||(G[g]=[])).push({x,sc})});
+  $('secList').innerHTML=secList.length?Object.keys(G).sort(cmp).map(g=>{
+    const it=G[g].sort((p,q)=>cmp(p.sc,q.sc)),cnt=x=>kids.filter(k=>k.section===x.name).length,kc=it.reduce((t,i)=>t+cnt(i.x),0);
+    return `<details class="gbox" data-g="${esc(g)}"${secOpen.has(g)?' open':''}><summary><div><strong>${esc(g)}</strong><div class="note">${it.length} ${it.length===1?'section':'sections'} \u00b7 ${kc} ${kc===1?'child':'children'}</div></div></summary><div class="secgrid">${it.map(({x,sc})=>{const c=cnt(x);
+      return `<div class="card row"><div><strong>${esc(sc||x.name)}</strong><div class="note">${c} ${c===1?'child':'children'}</div></div><button class="btn alt sm" data-sx="${x.id}">Remove</button></div>`}).join('')}</div></details>`}).join(''):'<p class="note">No grades or sections yet. Add one above.</p>';
+  document.querySelectorAll('#secList details').forEach(d=>d.ontoggle=()=>{d.open?secOpen.add(d.dataset.g):secOpen.delete(d.dataset.g)});
   document.querySelectorAll('[data-sx]').forEach(b=>b.onclick=()=>{const x=secList.find(z=>z.id===b.dataset.sx);
     if(kids.some(k=>k.section===x.name)){toast('Move or remove its children first.');return}
     if(confirm('Remove '+x.name+'?'))deleteDoc(doc(db,'sections',x.id)).catch(()=>toast('Could not remove.'))})}
