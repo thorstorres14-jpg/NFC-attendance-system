@@ -363,7 +363,7 @@ button{cursor:pointer}
 <section id="tab-school">
   <div class="card">
     <strong>School details</strong>
-    <p class="note">Used on every SF2 report. Saved on this device.</p>
+    <p class="note" id="schNote">Used on every SF2 report. Saved on this device.</p>
     <div class="frm c2"><div><label for="sfSchool">School name</label><input id="sfSchool" autocomplete="off"></div><div><label for="sfId">School ID</label><input id="sfId" autocomplete="off"></div></div>
     <div class="frm"><div><label for="sfHead">School head</label><input id="sfHead" autocomplete="off"></div></div>
     <div class="frm c2"><div><label for="sfYear">School year (e.g. 2026-2027)</label><input id="sfYear" autocomplete="off"></div><div><label for="sfCut">Late after (time)</label><input id="sfCut" type="time" value="07:30"></div></div>
@@ -544,6 +544,7 @@ onAuthStateChanged(auth,async user=>{
   const vis={tap:myRole!=='adviser',kids:myRole==='admin'||myRole==='staff',log:true,sf2:myRole!=='gate',school:myRole!=='gate'};
   Object.entries(vis).forEach(([t,v])=>document.querySelector('nav [data-tab='+t+']').hidden=!v);
   showTab(myRole==='adviser'?'sf2':'tap');
+  unsub.push(onSnapshot(doc(db,'settings','school'),s=>applySchool(s.exists()?s.data():{},admin),()=>{}));
   unsub.push(onSnapshot(collection(db,'sections'),s=>{secList=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>cmp(a.name,b.name));render();if(myRole==='admin')renderStaff()},()=>toast('Could not load the sections.')));
   const start=new Date();start.setHours(0,0,0,0);
   const adv=myRole==='adviser';
@@ -982,12 +983,36 @@ function renderBrand(){
   $('navName').textContent=nm||'Tap-In Attendance'}
 $('schLogoFile').onchange=e=>{const f=e.target.files[0];if(!f)return;if(!/^image\//.test(f.type)){toast('Choose an image file.');return}
   const im=new Image(),u=URL.createObjectURL(f);
-  im.onload=()=>{const sc=Math.min(1,512/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
-    c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);schLogo=c.toDataURL('image/png');
-    try{localStorage.setItem(SCHKEY,schLogo)}catch(x){toast('Could not keep the logo on this device; it will reset on reload.')}
-    renderBrand();toast('School logo updated');e.target.value=''};
+  im.onload=()=>{const sc=Math.min(1,256/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
+    c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);const d=c.toDataURL('image/png');e.target.value='';
+    if(d.length>500000){toast('That logo is too detailed. Try a simpler image.');return}
+    schLogo=d;cacheLogo();renderBrand();pushSchool({schoolLogo:schLogo},'School logo updated')};
   im.onerror=()=>toast('Could not read that image.');im.src=u};
-$('schLogoDel').onclick=()=>{schLogo='';try{localStorage.removeItem(SCHKEY)}catch(e){}renderBrand();toast('School logo removed')};
+$('schLogoDel').onclick=()=>{schLogo='';cacheLogo();renderBrand();pushSchool({schoolLogo:''},'School logo removed')};
+function cacheLogo(){try{schLogo?localStorage.setItem(SCHKEY,schLogo):localStorage.removeItem(SCHKEY)}catch(e){toast('Could not keep the logo on this device; it will reset on reload.')}}
+
+// --- School name, school year and logo are one shared record (settings/school), so every device shows the same.
+// Only admins can change it; everyone else gets it read-only. An admin's first sign-in copies what that device already had.
+let schoolShared=false;
+async function pushSchool(part,msg){
+  if(myRole!=='admin'){toast(msg||'Saved on this device');return}
+  try{await setDoc(doc(db,'settings','school'),part,{merge:true});toast(msg||'Saved for all devices')}
+  catch(e){toast('Saved on this device only. Publish the new firestore.rules to share it with other devices.')}}
+function applySchool(d,admin){
+  const has=!!(d.schoolName||d.schoolYear||d.schoolLogo);
+  if(!has){
+    schoolShared=false;lockSchool();
+    if(admin){const n=$('sfSchool').value.trim(),y=$('sfYear').value.trim();
+      if(n||y||schLogo)pushSchool({schoolName:n,schoolYear:y,schoolLogo:schLogo},'School details are now shared with every device')}
+    return}
+  schoolShared=true;
+  $('sfSchool').value=d.schoolName||'';$('sfYear').value=d.schoolYear||'';schLogo=d.schoolLogo||'';
+  cacheLogo();$('sfSchool').onchange();renderBrand();lockSchool()}
+function lockSchool(){
+  const ro=schoolShared&&myRole!=='admin';
+  ['sfSchool','sfYear','schLogoFile','schLogoDel'].forEach(i=>{$(i).disabled=ro});
+  $('schNote').textContent=!schoolShared?'Used on every SF2 report. Saved on this device.':ro?'Used on every SF2 report. The school name, year and logo are set by the admin for all devices.':'Used on every SF2 report. The school name, year and logo are shared with every device.'}
+['sfSchool','sfYear'].forEach(i=>$(i).addEventListener('change',()=>{if(myRole==='admin')pushSchool({schoolName:$('sfSchool').value.trim(),schoolYear:$('sfYear').value.trim()},'School details saved for all devices')}));
 $('heroSet').onclick=()=>{showTab('school');$('sfSchool').focus()};
 ['sfSchool','sfYear'].forEach(i=>$(i).addEventListener('input',renderBrand));
 renderBrand();
