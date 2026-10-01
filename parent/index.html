@@ -205,13 +205,13 @@ function render(logs){
   const cut=Date.now()-30*864e5;
   $('kids').innerHTML=ids.map(id=>{
     const a=by[id].sort((x,y)=>y.time-x.time),l=a[0],today=dk(l.time)===dk(Date.now());
-    const st=!today?'No tap yet today':l.type==='in'?'At school':'Went home';
+    const AT=t=>t==='in'||t==='back',st=!today?'No tap yet today':AT(l.type)?'At school':l.type==='lunch'?'Out for lunch':'Went home';
     let days='',cur='';
     a.filter(x=>x.time>=cut).forEach(x=>{
       const d=new Date(x.time).toLocaleDateString('en-PH',{weekday:'short',month:'short',day:'numeric'});
       if(d!==cur){cur=d;days+=`<div class="day">${esc(d)}</div>`}
-      days+=`<div class="row"><span>${x.type==='in'?'Arrived':'Left'}</span><span class="pill ${x.type==='in'?'in':''}">${tm(x.time)}</span></div>`});
-    return `<div class="card"><div class="row"><span class="big">${esc(l.name)}</span><span class="pill ${today&&l.type==='in'?'in':''}">${st}</span></div>${days}</div>`}).join('')}
+      days+=`<div class="row"><span>${({in:'Arrived',out:'Left',lunch:'Out for lunch',back:'Back from lunch'})[x.type]||'Left'}</span><span class="pill ${AT(x.type)?'in':''}">${tm(x.time)}</span></div>`});
+    return `<div class="card"><div class="row"><span class="big">${esc(l.name)}</span><span class="pill ${today&&AT(l.type)?'in':''}">${st}</span></div>${days}</div>`}).join('')}
 
 // --- contact details and change requests
 let myKids=[],myReqs=[],parentEdit=false,parentReq=false,open={};
