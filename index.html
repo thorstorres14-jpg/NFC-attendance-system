@@ -220,7 +220,8 @@ main:has(#tab-sf2.on){max-width:1180px}
   <div class="card">
     <strong>Parent access</strong>
     <label class="chk"><input type="checkbox" id="parentEditChk"> Let parents edit their contact details (mobile number and alternate contact)</label>
-    <p class="note">Parents can never change names, sections, cards or the email list. For those they send a change request, which appears at the top of the Children tab.</p>
+    <label class="chk"><input type="checkbox" id="parentReqChk"> Let parents send change requests (for names, sections and other details)</label>
+    <p class="note">Parents can never change names, sections, cards or the email list themselves. Their requests appear at the top of the Children tab for you to review.</p>
   </div>
   <div class="card">
     <strong>Add a grade and section</strong>
@@ -316,7 +317,7 @@ onAuthStateChanged(auth,async user=>{
   unsub.push(onSnapshot(adv?query(collection(db,'kids'),...sf):collection(db,'kids'),s=>{kids=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>toast('Could not load the list of children.')));
   unsub.push(onSnapshot(query(collection(db,'log'),...sf,where('time','>=',start.getTime()),orderBy('time')),s=>{logs=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>toast('Could not load the log. A Firestore index may be needed: open the browser console (F12) and click the link.')))}
   if(admin)unsub.push(onSnapshot(query(collection(db,'broadcasts'),orderBy('time','desc')),s=>{bcList=s.docs.slice(0,10).map(d=>({id:d.id,...d.data()}));renderBc()},()=>toast('Could not load past broadcasts.')));
-  if(admin)unsub.push(onSnapshot(doc(db,'settings','school'),s=>{$('parentEditChk').checked=!!(s.exists()&&s.data().parentEdit)},()=>{}));
+  if(admin)unsub.push(onSnapshot(doc(db,'settings','school'),s=>{const d=s.exists()?s.data():{};$('parentEditChk').checked=!!d.parentEdit;$('parentReqChk').checked=!!d.parentRequests},()=>{}));
   if(myRole==='admin'||myRole==='staff')unsub.push(onSnapshot(query(collection(db,'changeRequests'),where('status','==','pending')),s=>{reqList=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.time-b.time);renderReq()},()=>toast('Could not load change requests.')));
   if(admin)unsub.push(onSnapshot(collection(db,'staff'),s=>{staffList=s.docs.map(d=>({id:d.id,...d.data()}));renderStaff()},()=>toast('Could not load the staff list.')));
 });
@@ -724,9 +725,10 @@ $('bcSend').onclick=async()=>{
 
 // --- parent change requests + contact editing switch
 let reqList=[];
-$('parentEditChk').onchange=async e=>{const c=e.target;
-  try{await setDoc(doc(db,'settings','school'),{parentEdit:c.checked});toast(c.checked?'Parents can now edit their contact details.':'Parent editing is off.')}
-  catch(x){c.checked=!c.checked;toast('Could not save the setting.')}};
+[['parentEditChk','parentEdit','Parents can now edit their contact details.','Parent editing is off.'],['parentReqChk','parentRequests','Parents can now send change requests.','Change requests are off.']].forEach(([id,key,on,off])=>{
+  $(id).onchange=async e=>{const c=e.target;
+    try{await setDoc(doc(db,'settings','school'),{[key]:c.checked},{merge:true});toast(c.checked?on:off)}
+    catch(x){c.checked=!c.checked;toast('Could not save the setting.')}}});
 function renderReq(){
   const box=$('reqBox');
   if(!reqList.length){box.innerHTML='';return}
