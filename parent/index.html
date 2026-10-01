@@ -18,6 +18,8 @@
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Fredoka,system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:520px;margin:0 auto;padding:16px}
 h1{font-size:1.5rem;margin:8px 0 2px;font-weight:600}
+.brand{display:flex;gap:12px;align-items:center;min-width:0}
+.brand img{display:block;width:48px;height:48px;flex:none;object-fit:contain;padding:3px;border-radius:50%;background:#fff;border:1px solid var(--line)}
 .sub{color:var(--mute);margin:0 0 16px}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 .btn{display:inline-block;padding:11px 18px;border:0;border-radius:12px;background:var(--acc);color:var(--acc-ink);font:inherit;font-weight:500;cursor:pointer}
@@ -42,7 +44,7 @@ textarea{resize:vertical;min-height:84px}
 </head>
 <body>
 <main>
-<div class="row"><h1>Tap-In Parents</h1><span><button class="btn alt sm" id="pwBtn" hidden>Password</button> <button class="btn alt sm" id="outBtn" hidden>Log out</button></span></div>
+<div class="row"><div class="brand"><img id="schLogo" alt="School logo" hidden><div><h1>Tap-In Parents</h1><div class="note" id="schName" hidden></div></div></div><span><button class="btn alt sm" id="pwBtn" hidden>Password</button> <button class="btn alt sm" id="outBtn" hidden>Log out</button></span></div>
 <p class="sub">See whether your child is at school or has gone home.</p>
 <p class="note" id="who"></p>
 
@@ -151,6 +153,11 @@ onAuthStateChanged(auth,user=>{
   if(!user.emailVerified){$('verify').hidden=false;return}
   start(user)});
 
+// School logo, name and year come from the shared school record; the last copy is kept so it shows right away next time.
+function showBrand(d){const n=(d.schoolName||'').trim(),y=(d.schoolYear||'').trim(),l=d.schoolLogo||'',t=[n,y&&('SY '+y)].filter(Boolean).join(' \u00b7 ');
+  const im=$('schLogo');im.hidden=!l;if(l)im.src=l;$('schName').textContent=t;$('schName').hidden=!t;
+  try{localStorage.setItem('tapin-brand',JSON.stringify({schoolName:n,schoolYear:y,schoolLogo:l}))}catch(e){}}
+try{const b=JSON.parse(localStorage.getItem('tapin-brand')||'null');if(b)showBrand(b)}catch(e){}
 function start(user){$('pwBtn').hidden=false;
   $('who').textContent='Signed in as '+user.email;
   $('verify').hidden=true;$('app').hidden=false;
@@ -162,7 +169,7 @@ function start(user){$('pwBtn').hidden=false;
   const em=user.email.toLowerCase();
   unsubC=[
     onSnapshot(query(collection(db,'kids'),where('parentEmails','array-contains',em)),s=>{myKids=s.docs.map(d=>({id:d.id,...d.data()}));renderContacts()},()=>{}),
-    onSnapshot(doc(db,'settings','school'),s=>{const d=s.exists()?s.data():{};parentEdit=!!d.parentEdit;parentReq=!!d.parentRequests;renderContacts()},()=>{parentEdit=false;parentReq=false;renderContacts()}),
+    onSnapshot(doc(db,'settings','school'),s=>{const d=s.exists()?s.data():{};parentEdit=!!d.parentEdit;parentReq=!!d.parentRequests;showBrand(d);renderContacts()},()=>{parentEdit=false;parentReq=false;renderContacts()}),
     onSnapshot(query(collection(db,'changeRequests'),where('parentEmail','==',em)),s=>{myReqs=s.docs.map(d=>({id:d.id,...d.data()}));renderContacts()},()=>{})];
   setAlertBox()}
 
