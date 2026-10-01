@@ -160,6 +160,7 @@ main:has(#tab-sf2.on){max-width:1180px}
 </section>
 
 <section id="tab-kids">
+  <div id="reqBox"></div>
   <div class="card">
     <strong id="formTitle">Add a child</strong>
     <div class="frm c3"><div><label for="kLast">Last name</label><input id="kLast" autocomplete="off"></div>
@@ -170,6 +171,8 @@ main:has(#tab-sf2.on){max-width:1180px}
       <div><label for="kSecName">Section</label><select id="kSecName"></select><select id="kSec" hidden></select></div></div>
     <div class="frm c2"><div><label for="kParent">Parent's name</label><input id="kParent" autocomplete="off"></div>
       <div><label for="kPhone">Parent's mobile number</label><input id="kPhone" inputmode="tel" placeholder="09xx xxx xxxx"></div></div>
+    <div class="frm c2"><div><label for="kAltName">Alternate contact name (optional)</label><input id="kAltName" autocomplete="off"></div>
+      <div><label for="kAltPhone">Alternate contact number (optional)</label><input id="kAltPhone" inputmode="tel"></div></div>
     <div class="frm"><div><label for="kEmail">Parent's email (for the parent app)</label><input id="kEmail" type="email" autocomplete="off"></div></div>
     <div class="frm"><div><label for="kEmail2">Second email (optional, e.g. the other parent)</label><input id="kEmail2" type="email" autocomplete="off"></div></div>
     <p class="row"><button class="btn" id="addKid">Add</button><button class="btn alt sm" id="cancelEdit" hidden>Cancel</button></p>
@@ -213,6 +216,11 @@ main:has(#tab-sf2.on){max-width:1180px}
     <label for="bcBody">Message</label><textarea id="bcBody" maxlength="1000" placeholder="Due to the weather conditions, there will be no classes tomorrow because of the typhoon."></textarea>
     <p><button class="btn" id="bcSend">Send to all parents</button></p>
     <div id="bcList"></div>
+  </div>
+  <div class="card">
+    <strong>Parent access</strong>
+    <label class="chk"><input type="checkbox" id="parentEditChk"> Let parents edit their contact details (mobile number and alternate contact)</label>
+    <p class="note">Parents can never change names, sections, cards or the email list. For those they send a change request, which appears at the top of the Children tab.</p>
   </div>
   <div class="card">
     <strong>Add a grade and section</strong>
@@ -308,6 +316,8 @@ onAuthStateChanged(auth,async user=>{
   unsub.push(onSnapshot(adv?query(collection(db,'kids'),...sf):collection(db,'kids'),s=>{kids=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>toast('Could not load the list of children.')));
   unsub.push(onSnapshot(query(collection(db,'log'),...sf,where('time','>=',start.getTime()),orderBy('time')),s=>{logs=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>toast('Could not load the log. A Firestore index may be needed: open the browser console (F12) and click the link.')))}
   if(admin)unsub.push(onSnapshot(query(collection(db,'broadcasts'),orderBy('time','desc')),s=>{bcList=s.docs.slice(0,10).map(d=>({id:d.id,...d.data()}));renderBc()},()=>toast('Could not load past broadcasts.')));
+  if(admin)unsub.push(onSnapshot(doc(db,'settings','school'),s=>{$('parentEditChk').checked=!!(s.exists()&&s.data().parentEdit)},()=>{}));
+  if(myRole==='admin'||myRole==='staff')unsub.push(onSnapshot(query(collection(db,'changeRequests'),where('status','==','pending')),s=>{reqList=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.time-b.time);renderReq()},()=>toast('Could not load change requests.')));
   if(admin)unsub.push(onSnapshot(collection(db,'staff'),s=>{staffList=s.docs.map(d=>({id:d.id,...d.data()}));renderStaff()},()=>toast('Could not load the staff list.')));
 });
 
@@ -363,31 +373,31 @@ function setForm(k){
   $('formTitle').textContent=k?'Edit child':'Add a child';
   $('addKid').textContent=k?'Save':'Add';$('cancelEdit').hidden=!k;
   const e=k?emailsOf(k):[];
-  $('kSex').value=k?(k.sex||''):'';fillKSec(k?k.section:'');$('kSec').value=k?(k.section||''):'';{const nm=k?splitName(k.name):['','',''];$('kLast').value=nm[0];$('kFirst').value=nm[1];$('kMid').value=nm[2]}$('kParent').value=k?(k.parent||''):'';$('kPhone').value=k?k.phone:'';
+  $('kSex').value=k?(k.sex||''):'';fillKSec(k?k.section:'');$('kSec').value=k?(k.section||''):'';{const nm=k?splitName(k.name):['','',''];$('kLast').value=nm[0];$('kFirst').value=nm[1];$('kMid').value=nm[2]}$('kParent').value=k?(k.parent||''):'';$('kPhone').value=k?k.phone:'';$('kAltName').value=k?(k.altName||''):'';$('kAltPhone').value=k?(k.altPhone||''):'';
   $('kEmail').value=e[0]||'';$('kEmail2').value=e[1]||''}
 // Names are stored as "Last, First, Middle" (the way SF2 prints them)
 function splitName(n){n=(n||'').trim();if(n.includes(',')){const p=n.split(',').map(x=>x.trim());return [p[0]||'',p[1]||'',p.slice(2).join(' ')]}
   const w=n.split(/\s+/);return [w[0]||'',w.slice(1).join(' '),'']}
 $('cancelEdit').onclick=()=>setForm(null);
 $('addKid').onclick=async()=>{
-  const last=$('kLast').value.trim(),first=$('kFirst').value.trim(),mid=$('kMid').value.trim(),name=[last,first,mid].filter(Boolean).join(', '),parent=$('kParent').value.trim(),phone=$('kPhone').value.trim(),sex=$('kSex').value,section=$('kSec').value.trim();
+  const last=$('kLast').value.trim(),first=$('kFirst').value.trim(),mid=$('kMid').value.trim(),name=[last,first,mid].filter(Boolean).join(', '),parent=$('kParent').value.trim(),phone=$('kPhone').value.trim(),altName=$('kAltName').value.trim(),altPhone=$('kAltPhone').value.trim(),sex=$('kSex').value,section=$('kSec').value.trim();
   const emails=[$('kEmail').value,$('kEmail2').value].map(x=>x.trim().toLowerCase()).filter((x,i,a)=>x&&a.indexOf(x)===i);
   if(!last||!first||!phone||!emails.length){toast('Enter the child\'s last and first name, a mobile number, and at least one parent email.');return}
   try{
     if(editing){
       const id=editing;
-      await updateDoc(doc(db,'kids',id),{name,parent,phone,parentEmails:emails,sex,section});
+      await updateDoc(doc(db,'kids',id),{name,parent,phone,altName,altPhone,parentEmails:emails,sex,section});
       const snap=await getDocs(query(collection(db,'log'),where('kidId','==',id)));
       for(let i=0;i<snap.docs.length;i+=400){const bt=writeBatch(db);snap.docs.slice(i,i+400).forEach(d=>bt.update(d.ref,{parentEmails:emails,name,section}));await bt.commit()}
       toast('Changes saved');
     }else{
-      await addDoc(collection(db,'kids'),{name,parent,phone,parentEmails:emails,uid:null,sex,section});toast('Added '+name)}
+      await addDoc(collection(db,'kids'),{name,parent,phone,altName,altPhone,parentEmails:emails,uid:null,sex,section});toast('Added '+name)}
     setForm(null);
   }catch(e){toast('Could not save ('+(e.code||e.message)+').')}};
 
 function render(){fillSec();renderSecs();
   fillSim();
-  $('kidList').innerHTML=kids.length?kids.map(k=>`<div class="card"><div class="row"><div><strong>${esc(k.name)}</strong><div class="note">${k.sex==='M'?'Male':k.sex==='F'?'Female':'Sex not set'} | ${esc(k.section||'No section')}</div><div class="note">${esc(k.parent||'')} ${esc(k.phone)}</div><div class="note">${esc(emailsOf(k).join(', '))}</div></div>
+  $('kidList').innerHTML=kids.length?kids.map(k=>`<div class="card"><div class="row"><div><strong>${esc(k.name)}</strong><div class="note">${k.sex==='M'?'Male':k.sex==='F'?'Female':'Sex not set'} | ${esc(k.section||'No section')}</div><div class="note">${esc(k.parent||'')} ${esc(k.phone)}</div>${k.altPhone?`<div class="note">Alternate: ${esc(k.altName||'')} ${esc(k.altPhone)}</div>`:''}${k.contactUpdatedAt?`<div class="note">Contact details updated by a parent on ${new Date(k.contactUpdatedAt).toLocaleDateString('en-PH',{month:'short',day:'numeric'})}</div>`:''}<div class="note">${esc(emailsOf(k).join(', '))}</div></div>
    <span class="tag ${k.uid?'ok':'no'}">${k.uid?'Has card':'No card'}</span></div>
    <div class="row" style="margin-top:8px"><button class="btn alt sm" data-a="${k.id}">${assigning===k.id?'Waiting for a tap...':(k.uid?'Replace card':'Link card')}</button>
    <span><button class="btn alt sm" data-e="${k.id}">Edit</button> <button class="btn alt sm" data-d="${k.id}">Remove</button></span></div></div>`).join(''):'<p class="note">No children yet. Add one above.</p>';
@@ -711,6 +721,22 @@ $('bcSend').onclick=async()=>{
     $('bcTitle').value='';$('bcBody').value='';toast('Sent to all parents.')}
   catch(e){toast('Could not send ('+(e.code||'error')+').')}
   finally{$('bcSend').disabled=false}};
+
+// --- parent change requests + contact editing switch
+let reqList=[];
+$('parentEditChk').onchange=async e=>{const c=e.target;
+  try{await setDoc(doc(db,'settings','school'),{parentEdit:c.checked});toast(c.checked?'Parents can now edit their contact details.':'Parent editing is off.')}
+  catch(x){c.checked=!c.checked;toast('Could not save the setting.')}};
+function renderReq(){
+  const box=$('reqBox');
+  if(!reqList.length){box.innerHTML='';return}
+  box.innerHTML=`<strong>Change requests from parents (${reqList.length})</strong><p class="note">Make the change with the child's Edit button, then mark the request done.</p>`
+   +reqList.map(r=>`<div class="card"><div class="row"><strong>${esc(r.kidName)}</strong><span class="note">${new Date(r.time).toLocaleString('en-PH',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</span></div><div class="note">${esc(r.section||'No section')} | ${esc(r.parentEmail)}</div><p style="white-space:pre-wrap;margin:6px 0">${esc(r.message)}</p><div class="row"><span><button class="btn sm" data-rd="${r.id}">Mark done</button> <button class="btn alt sm" data-rx="${r.id}">Decline</button></span><button class="btn alt sm" data-ro="${r.kidId}">Open child</button></div></div>`).join('');
+  const resolve=(id,status)=>{const note=prompt(status==='done'?'Optional note for the parent:':'Reason for declining (the parent will see this):','');if(note===null)return;
+    updateDoc(doc(db,'changeRequests',id),{status,note:note.trim().slice(0,300),resolvedBy:auth.currentUser.uid,resolvedTime:Date.now()}).catch(()=>toast('Could not update the request.'))};
+  box.querySelectorAll('[data-rd]').forEach(b=>b.onclick=()=>resolve(b.dataset.rd,'done'));
+  box.querySelectorAll('[data-rx]').forEach(b=>b.onclick=()=>resolve(b.dataset.rx,'declined'));
+  box.querySelectorAll('[data-ro]').forEach(b=>b.onclick=()=>{const k=kids.find(x=>x.id===b.dataset.ro);if(k){setForm(k);window.scrollTo({top:document.querySelector('#formTitle').offsetTop-20,behavior:'smooth'})}else toast('Child not found.')})}
 </script>
 </body>
 </html>
