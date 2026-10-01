@@ -106,9 +106,13 @@ service cloud.firestore {
     match /settings/{id} {
       allow read: if isStaff() || (request.auth != null && request.auth.token.email_verified == true);
       allow create, update: if isAdmin() && id == 'school'
-        && request.resource.data.keys().hasOnly(['parentEdit', 'parentRequests'])
+        && request.resource.data.keys().hasOnly(['parentEdit', 'parentRequests', 'schoolName', 'schoolYear', 'schoolLogo'])
         && request.resource.data.get('parentEdit', false) is bool
-        && request.resource.data.get('parentRequests', false) is bool;
+        && request.resource.data.get('parentRequests', false) is bool
+        // School name, school year and logo (a small image as a data URL) shown on every device.
+        && request.resource.data.get('schoolName', '') is string && request.resource.data.get('schoolName', '').size() <= 120
+        && request.resource.data.get('schoolYear', '') is string && request.resource.data.get('schoolYear', '').size() <= 20
+        && request.resource.data.get('schoolLogo', '') is string && request.resource.data.get('schoolLogo', '').size() <= 600000;
     }
 
     match /log/{id} {
