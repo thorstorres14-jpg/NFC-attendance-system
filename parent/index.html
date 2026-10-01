@@ -63,6 +63,36 @@ textarea{resize:vertical;min-height:84px}
 .kt .tl strong{font-size:.95rem;font-weight:500}
 .kt .tl .a{color:#4cc790}.kt .tl .l{color:#6aa7ff}.kt .tl .n{color:#9bbac6}
 .kh{margin:0 0 12px}
+.mo{position:fixed;inset:0;z-index:50;background:rgba(5,15,24,.62);display:flex;align-items:flex-end;justify-content:center}
+.ms{background:var(--bg);color:var(--ink);width:100%;max-width:520px;max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px))}
+@media(min-width:600px){.mo{align-items:center}.ms{border-radius:22px}}
+.seg{display:flex;gap:6px;margin:14px 0 10px}
+.seg button{flex:1;min-height:44px;border:2px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit;font-weight:500;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--t-green);border-color:var(--t-green);color:var(--t-ink)}
+.dn{display:flex;gap:8px;align-items:center}.dn input{flex:1}.dn .btn{min-width:44px;min-height:48px;padding:0 12px}
+.mlab{font-weight:500;text-align:center;margin:10px 0}
+.mg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 12px}
+.mt{border-radius:14px;padding:10px 12px;background:color-mix(in srgb,var(--c) 14%,var(--card))}
+.mt b{display:block;font-size:1.5rem;color:var(--c);line-height:1.2}.mt span{font-size:.85rem;color:var(--mute)}
+.mt.g{--c:var(--t-green)}.mt.a{--c:var(--t-amber)}.mt.r{--c:var(--t-red)}.mt.b{--c:var(--t-blue)}
+.ab{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 10px}
+.ab div{border-radius:14px;padding:10px 12px}.ab .a1{background:color-mix(in srgb,var(--t-green) 14%,var(--card))}.ab .a2{background:color-mix(in srgb,var(--t-blue) 14%,var(--card))}
+.ab small{display:block;color:var(--mute);font-size:.85rem}.ab b{font-size:1.25rem}
+.st.bad{--sc:var(--t-red)}
+.wr{display:grid;grid-template-columns:1.5fr 1fr .9fr .9fr;gap:6px;align-items:center;width:100%;padding:10px 4px;border:0;border-top:1px solid var(--line);background:transparent;color:var(--ink);font:inherit;font-size:.9rem;text-align:left;cursor:pointer}
+.wr.wh{cursor:default;color:var(--mute);font-size:.8rem;border-top:0}
+.pill.g{background:color-mix(in srgb,var(--t-green) 18%,var(--card));color:var(--t-green)}
+.pill.a{background:color-mix(in srgb,var(--t-amber) 18%,var(--card));color:var(--t-amber)}
+.pill.r{background:color-mix(in srgb,var(--t-red) 18%,var(--card));color:var(--t-red)}
+.wr .pill{justify-self:start}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal .hd{text-align:center;font-size:.8rem;color:var(--mute)}
+.cd{min-height:42px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--mute);font:inherit;font-size:.9rem;cursor:pointer}
+.cd.present{background:var(--t-green);border-color:var(--t-green);color:var(--t-ink)}
+.cd.late{background:var(--t-amber);border-color:var(--t-amber);color:var(--t-ink)}
+.cd.absent{background:var(--t-red);border-color:var(--t-red);color:var(--t-ink)}
+.leg{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0 0;font-size:.85rem;color:var(--mute)}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
 .mnav{margin:0 0 12px}
 .rr{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
 .rr:first-of-type{margin-top:8px}.rr span:nth-child(2){flex:1}.rr b{font-size:1.25rem}
@@ -221,7 +251,7 @@ onAuthStateChanged(auth,user=>{
   if(unsubB){unsubB();unsubB=null}
   annMax=0;annReady=false;$('ann').innerHTML='';
   allLogs=null;$('kids').innerHTML='';$('report').innerHTML='';$('annBadge').hidden=true;{const n=new Date();repY=n.getFullYear();repM=n.getMonth()}setTab('att');
-  unsubC.forEach(u=>u());unsubC=[];kidsReady=false;myKids=[];myReqs=[];open={};$('contacts').innerHTML='';
+  unsubC.forEach(u=>u());unsubC=[];closeModal();kidsReady=false;myKids=[];myReqs=[];open={};$('contacts').innerHTML='';
   $('who').textContent='';
   $('outBtn').hidden=!user;$('pwBtn').hidden=!(user&&user.emailVerified);if(!user)$('pwCard').hidden=true;$('login').hidden=!!user;document.body.classList.toggle('is-login',!user);$('verify').hidden=true;$('app').hidden=true;
   if(!user)return;
@@ -282,40 +312,83 @@ function setTab(t){document.querySelectorAll('.tab').forEach(b=>b.setAttribute('
   ['att','ann','rep'].forEach(x=>$('tab-'+x).hidden=x!==t)}
 document.querySelector('.tabs').onclick=e=>{const b=e.target.closest('[data-tab]');if(b){setTab(b.dataset.tab);window.scrollTo(0,0)}};
 
-let histKid=null;
+let mKid=null,mView='day',mDate=new Date();
 function render(logs){
   const by={};
   logs.forEach(l=>(by[l.kidId]=by[l.kidId]||[]).push(l));
   if(!kidsReady)return;
   const ids=[...myKids].sort((x,y)=>String(x.name).localeCompare(String(y.name))).map(k=>k.id);
   if(!ids.length){$('kids').innerHTML='<div class="card"><strong>No children linked yet</strong><p class="note">No children are linked to the email shown above. If your child already attends, ask the school to check that this is the email they have on file.</p></div>';return}
-  const cut=Date.now()-30*864e5,S={in:['ok','In school'],back:['ok','In school'],lunch:['lunch','Out for lunch'],out:['home','Went home']},AT=t=>t==='in'||t==='back';
+  const S={in:['ok','In school'],back:['ok','In school'],lunch:['lunch','Out for lunch'],out:['home','Went home']};
   const info=ids.map(id=>{
     const a=(by[id]||[]).sort((x,y)=>y.time-x.time),l=a[0]||null,today=!!l&&dk(l.time)===dk(Date.now()),k=myKids.find(x=>x.id===id)||{};
     const tl=today?a.filter(x=>dk(x.time)===dk(Date.now())).sort((x,y)=>x.time-y.time):[];
     const arr=tl.find(x=>x.type==='in')||tl[0],left=today&&l.type==='out'?l:null;
-    return{id,a,l,today,k,arr,left,name:k.name||(l&&l.name)||'Child'}});
+    return{id,l,today,k,arr,left,name:k.name||(l&&l.name)||'Child'}});
   const tiles=info.map(o=>{
     const s=o.today?(S[o.l.type]||S.out):['none','No tap yet today'];
     const ph=o.k.photo?`<img class="ph" src="${esc(o.k.photo)}" alt="">`:`<span class="ph" aria-hidden="true">${esc(String(o.name||'?').split(/[\s,]+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase())}</span>`;
     const A=o.arr?`<strong class="a">${tm(o.arr.time)}</strong>`:'<strong class="n">&ndash;</strong>',L=o.left?`<strong class="l">${tm(o.left.time)}</strong>`:`<strong class="n">${o.today?'Not yet':'&ndash;'}</strong>`;
-    return `<button type="button" class="kt" data-kid="${esc(o.id)}" aria-expanded="${histKid===o.id}" aria-label="${esc(o.name)}, ${s[1]}. Tap for past days">${ph}<span class="sp ${s[0]}"><i></i>${s[1]}</span><span class="nm"><b>${esc(o.name)}</b>${o.k.section?`<small>${esc(o.k.section)}</small>`:''}<span class="tl"><span>Arrived</span>${A}</span><span class="tl"><span>Left</span>${L}</span></span></button>`}).join('');
-  let hist='';
-  const h=info.find(o=>o.id===histKid);
-  if(h){
-    let days='',cur='';
-    h.a.filter(x=>x.time>=cut).forEach(x=>{
-      const d=new Date(x.time).toLocaleDateString('en-PH',{weekday:'short',month:'short',day:'numeric'});
-      if(d!==cur){cur=d;days+=`<div class="day">${esc(d)}</div>`}
-      days+=`<div class="row"><span>${({in:'Arrived',out:'Left',lunch:'Out for lunch',back:'Back from lunch'})[x.type]||'Left'}</span><span class="pill ${AT(x.type)?'in':''}">${tm(x.time)}</span></div>`});
-    hist=`<div class="card kh" id="kHist"><div class="row"><strong class="big">${esc(h.name)} &ndash; past days</strong><button type="button" class="btn alt sm" id="kClose">Close</button></div>${days||'<p class="note">No taps in the last 30 days.</p>'}</div>`}
-  $('kids').innerHTML=`<div class="kg">${tiles}</div>${hist}<p class="note">Tap a card to see past days.</p>`}
-$('kids').onclick=e=>{
-  const c=e.target.closest('#kClose'),t=e.target.closest('[data-kid]');
-  if(!c&&!t)return;
-  histKid=c?null:(histKid===t.dataset.kid?null:t.dataset.kid);
-  render(allLogs||[]);
-  if(histKid){const el=$('kHist');if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'})}};
+    return `<button type="button" class="kt" data-kid="${esc(o.id)}" aria-haspopup="dialog" aria-label="${esc(o.name)}, ${s[1]}. Open attendance details">${ph}<span class="sp ${s[0]}"><i></i>${s[1]}</span><span class="nm"><b>${esc(o.name)}</b>${o.k.section?`<small>${esc(o.k.section)}</small>`:''}<span class="tl"><span>Arrived</span>${A}</span><span class="tl"><span>Left</span>${L}</span></span></button>`}).join('');
+  $('kids').innerHTML=`<div class="kg">${tiles}</div><p class="note">Tap a card to see attendance details.</p>`;
+  if(mKid)renderModal()}
+$('kids').onclick=e=>{const t=e.target.closest('[data-kid]');if(t)openModal(t.dataset.kid)};
+
+const MS={present:['Present','check','g'],late:['Late','clock','a'],absent:['Absent','x','r'],off:['No class','dash',''],future:['Upcoming','dash','']};
+const pad2=n=>String(n).padStart(2,'0'),ymd=d=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+const sod=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x};
+const fd=(d,o)=>d.toLocaleDateString('en-PH',o);
+function kidMap(id){const m={};(allLogs||[]).forEach(l=>{if(l.kidId!==id)return;const k=ymd(new Date(l.time));(m[k]=m[k]||[]).push(l)});Object.values(m).forEach(a=>a.sort((x,y)=>x.time-y.time));return m}
+function dInfo(m,d){
+  const key=ymd(d),a=m[key]||[],w=d.getDay(),arr=a.find(x=>x.type==='in')||a[0],last=a[a.length-1],left=last&&last.type==='out'?last:null,[ch,cm]=String(lateAfter||'07:30').split(':').map(Number);
+  let st;
+  if(arr){const t=new Date(arr.time);st=t.getHours()*60+t.getMinutes()>ch*60+cm?'late':'present'}
+  else if(key>ymd(new Date()))st='future';else if(w===0||w===6)st='off';else st='absent';
+  return{d,key,a,arr,left,st}}
+function mRange(){
+  const d=sod(mDate);
+  if(mView==='day')return[d];
+  if(mView==='week'){const s=new Date(d);s.setDate(d.getDate()-((d.getDay()+6)%7));return[...Array(7)].map((_,i)=>{const x=new Date(s);x.setDate(s.getDate()+i);return x})}
+  const n=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();return[...Array(n)].map((_,i)=>new Date(d.getFullYear(),d.getMonth(),i+1))}
+function mStats(days){const c={present:0,late:0,absent:0};days.forEach(x=>{if(x.st in c)c[x.st]++});const att=c.present+c.late,den=att+c.absent;return{att,late:c.late,absent:c.absent,rate:den?Math.round(att/den*100)+'%':'\u2013'}}
+const statTiles=s=>`<div class="mg"><div class="mt g"><b>${s.att}</b><span>Days present</span></div><div class="mt a"><b>${s.late}</b><span>Tardy</span></div><div class="mt r"><b>${s.absent}</b><span>Absent</span></div><div class="mt b"><b>${s.rate}</b><span>Attendance rate</span></div></div>`;
+function dayBody(x){
+  const m=MS[x.st],cls={present:'ok',late:'lunch',absent:'bad'}[x.st]||'none',isToday=x.key===ymd(new Date());
+  const sub=x.arr?'Arrived '+tm(x.arr.time):({absent:'No tap recorded',off:'Weekend',future:'Not yet'})[x.st]||'';
+  const taps=x.a.length?`<div class="day">All taps</div>`+x.a.map(t=>`<div class="row"><span>${({in:'Arrived',out:'Left',lunch:'Out for lunch',back:'Back from lunch'})[t.type]||'Left'}</span><span class="pill ${t.type==='in'||t.type==='back'?'in':''}">${tm(t.time)}</span></div>`).join(''):'';
+  return `<div class="st ${cls}"><span class="ic">${ic(m[1])}</span><div><strong>${m[0]}</strong><div class="note">${esc(sub)}</div></div></div>`
+    +`<div class="ab"><div class="a1"><small>Arrived</small><b>${x.arr?tm(x.arr.time):'\u2013'}</b></div><div class="a2"><small>Left</small><b>${x.left?tm(x.left.time):(x.arr?(isToday?'Not yet':'No tap'):'\u2013')}</b></div></div>`+taps}
+function weekBody(days){
+  return statTiles(mStats(days))+`<div class="wr wh"><span>Day</span><span>Status</span><span>In</span><span>Out</span></div>`
+    +days.map(x=>{const m=MS[x.st];return `<button type="button" class="wr" data-go="${x.key}"><span>${esc(fd(x.d,{weekday:'short',month:'short',day:'numeric'}))}</span><span class="pill ${m[2]}">${m[0]}</span><span>${x.arr?tm(x.arr.time):'\u2013'}</span><span>${x.left?tm(x.left.time):'\u2013'}</span></button>`}).join('')}
+function monthBody(days){
+  const lead=days[0].getDay();
+  return statTiles(mStats(days))+`<div class="cal">${'SMTWTFS'.split('').map(c=>`<span class="hd">${c}</span>`).join('')}${'<span></span>'.repeat(lead)}${days.map(x=>`<button type="button" class="cd ${x.st}" data-go="${x.key}" aria-label="${esc(fd(x.d,{month:'long',day:'numeric'}))}: ${MS[x.st][0]}">${x.d.getDate()}</button>`).join('')}</div>`
+    +`<div class="leg"><span><i style="background:var(--t-green)"></i>Present</span><span><i style="background:var(--t-amber)"></i>Late</span><span><i style="background:var(--t-red)"></i>Absent</span></div>`}
+function renderModal(){
+  const k=myKids.find(x=>x.id===mKid);if(!k){closeModal();return}
+  const m=kidMap(mKid),days=mRange().map(d=>dInfo(m,d)),d0=sod(mDate),today=sod(new Date()),canNext=days[days.length-1].d<today;
+  const label=mView==='day'?fd(d0,{weekday:'long',month:'long',day:'numeric',year:'numeric'}):mView==='week'?fd(days[0].d,{month:'short',day:'numeric'})+' \u2013 '+fd(days[6].d,{month:'short',day:'numeric',year:'numeric'}):fd(d0,{month:'long',year:'numeric'});
+  const body=mView==='day'?dayBody(days[0]):mView==='week'?weekBody(days):monthBody(days);
+  let el=$('kmodal');
+  if(!el){el=document.createElement('div');el.id='kmodal';el.className='mo';document.body.appendChild(el);el.onclick=modalClick;el.onchange=e=>{if(e.target.id==='mDateIn'&&e.target.value){const [y,mo,d]=e.target.value.split('-').map(Number);mDate=new Date(y,mo-1,d);renderModal()}}}
+  const old=el.querySelector('.ms'),top=old?old.scrollTop:0;
+  el.innerHTML=`<div class="ms" role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="row"><div class="who">${avt(k,k.name)}<div><span class="big" id="mTitle">${esc(k.name)}</span>${k.section?`<div class="note">${esc(k.section)}</div>`:''}</div></div><button type="button" class="btn alt sm" data-act="close">Close</button></div>`
+    +`<div class="seg" role="group" aria-label="Period">${[['day','Day'],['week','Week'],['month','Month']].map(v=>`<button type="button" data-view="${v[0]}" aria-pressed="${mView===v[0]}">${v[1]}</button>`).join('')}</div>`
+    +`<div class="dn"><button type="button" class="btn alt sm" data-step="-1" aria-label="Previous ${mView}">&lsaquo;</button><input type="date" id="mDateIn" value="${ymd(d0)}" max="${ymd(today)}" aria-label="Select date"><button type="button" class="btn alt sm" data-step="1" aria-label="Next ${mView}" style="${canNext?'':'visibility:hidden'}">&rsaquo;</button></div>`
+    +`<div class="mlab">${esc(label)}</div>${body}`
+    +(mView==='day'?'':`<p class="note">Holidays and class suspensions count as weekdays here, so the school's official record may differ.</p>`)+`</div>`;
+  const ns=el.querySelector('.ms');if(old)ns.scrollTop=top}
+function modalClick(e){
+  const t=e.target;
+  if(t.id==='kmodal'||t.closest('[data-act="close"]'))return closeModal();
+  const v=t.closest('[data-view]');if(v){mView=v.dataset.view;return renderModal()}
+  const s=t.closest('[data-step]');if(s)return stepDate(+s.dataset.step);
+  const g=t.closest('[data-go]');if(g){const [y,mo,d]=g.dataset.go.split('-').map(Number);mDate=new Date(y,mo-1,d);mView='day';renderModal()}}
+function stepDate(n){const d=sod(mDate);if(mView==='month')d.setMonth(d.getMonth()+n,1);else d.setDate(d.getDate()+n*(mView==='week'?7:1));const t=sod(new Date());mDate=d>t?t:d;renderModal()}
+function openModal(id){mKid=id;mView='day';mDate=new Date();renderModal();document.body.style.overflow='hidden';const b=document.querySelector('#kmodal [data-act="close"]');if(b)b.focus()}
+function closeModal(){const id=mKid;mKid=null;const el=$('kmodal');if(el)el.remove();document.body.style.overflow='';if(id){const t=document.querySelector('[data-kid="'+(window.CSS&&CSS.escape?CSS.escape(id):id)+'"]');if(t)t.focus()}}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&mKid)closeModal()});
 
 function renderReport(){
   const el=$('report');if(!allLogs){el.innerHTML='';return}
