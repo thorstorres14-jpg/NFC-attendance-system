@@ -175,6 +175,47 @@ button{cursor:pointer}
   nav button:not([aria-selected="true"]):hover{background:var(--bg);color:var(--ink)}
   .btn:hover{filter:brightness(1.08)}.btn.alt:hover{background:var(--bg)}
 }
+
+/* ---------- Tap tab: school header, live 12-hour clock, scanner polish ---------- */
+.hero{--hero:#0d4d58;grid-column:1/-1;display:grid;gap:18px 28px;align-items:center;padding:20px 20px 24px;margin-bottom:14px;border-radius:24px;background:var(--hero);color:#fff;position:relative;overflow:hidden}
+@media (prefers-color-scheme:dark){.hero{--hero:#133840;border:1px solid var(--line)}}
+.hero-brand{display:flex;gap:16px;align-items:center;min-width:0}
+.hero-logo{width:76px;height:76px;flex:none;object-fit:contain;padding:7px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.2)}
+.hero-txt{min-width:0}
+.hero-name{margin:0;font-size:1.45rem;line-height:1.15;font-weight:600;overflow-wrap:anywhere}
+.hero-year{margin:6px 0 0;color:rgba(255,255,255,.78);font-size:.95rem}
+.hero-set{padding:9px 14px;border:1.5px dashed rgba(255,255,255,.55);border-radius:12px;background:transparent;color:#fff;font:inherit;font-size:.95rem}
+.hero-set:focus-visible{outline-color:#fff}
+.hero-clock{text-align:left}
+.clk{display:flex;align-items:baseline;gap:2px;line-height:1;font-variant-numeric:tabular-nums}
+.clk-hm{font-size:3.4rem;font-weight:600;letter-spacing:-.01em}
+.clk-s{display:inline-block;min-width:2.7ch;font-size:1.5rem;font-weight:500;color:rgba(255,255,255,.7)}
+.clk-ap{align-self:center;margin-left:6px;padding:3px 11px;border-radius:99px;background:var(--sun);color:#3a2a00;font-size:1rem;font-weight:600}
+.clk-date{margin-top:8px;color:rgba(255,255,255,.88);font-size:1.02rem}
+.clk-bar{position:absolute;left:0;right:0;bottom:0;height:5px;background:rgba(255,255,255,.12)}
+.clk-bar i{display:block;height:100%;background:var(--sun);transform-origin:left;transform:scaleX(0)}
+@media (prefers-reduced-motion:reduce){.clk-bar i{transition:none!important}}
+.ring{width:116px;height:116px;border-width:5px;background:color-mix(in srgb,var(--acc) 9%,transparent);color:var(--acc)}
+.ring svg{width:54px;height:54px}
+.zone.hit .ring{color:var(--ok)}
+.zone{border-radius:24px}
+#zoneTitle{font-size:1.15rem}
+.cardh{display:block;font-size:1.05rem}
+.navbrand{display:none;gap:12px;align-items:center;padding:0 6px 16px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+.navbrand img{width:44px;height:44px;flex:none;object-fit:contain;padding:3px;border-radius:50%;background:#fff}
+.navbrand span{min-width:0;font-size:.92rem;font-weight:600;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+@media screen and (min-width:700px){
+  .hero{grid-template-columns:minmax(0,1fr) auto;padding:26px 32px 30px}
+  .hero-clock{text-align:right}.clk{justify-content:flex-end}
+  .clk-hm{font-size:4.4rem}.clk-s{font-size:1.7rem}
+  .hero-name{font-size:1.8rem}.hero-logo{width:92px;height:92px}
+}
+@media screen and (min-width:1000px){
+  .navbrand{display:flex}
+  .hero{margin-bottom:0}
+  #tab-tap>.hero{grid-column:1/-1;grid-row:1}
+  #tab-tap>.zone{grid-row:2}#tab-tap>#result{grid-row:3}#tab-tap>.card{grid-row:2/span 2}
+}
 </style>
 </head>
 <body>
@@ -200,15 +241,31 @@ button{cursor:pointer}
 
 <div id="app" hidden>
 <section id="tab-tap" class="on">
+  <div class="hero" id="hero">
+    <div class="hero-brand">
+      <img class="hero-logo" id="heroLogo" alt="School logo">
+      <div class="hero-txt">
+        <h2 class="hero-name" id="heroName" hidden></h2>
+        <button class="hero-set" id="heroSet" type="button">Add your school name and logo</button>
+        <p class="hero-year" id="heroYear" hidden></p>
+      </div>
+    </div>
+    <div class="hero-clock">
+      <div class="clk"><span class="clk-hm"><span id="clkH">12</span>:<span id="clkM">00</span></span><span class="clk-s" id="clkS">:00</span><span class="clk-ap" id="clkAP">AM</span></div>
+      <div class="clk-date" id="clkDate"></div>
+    </div>
+    <div class="clk-bar" aria-hidden="true"><i id="clkBar"></i></div>
+  </div>
   <div class="zone" id="zone"><div>
-    <div class="ring">📶</div>
+    <div class="ring"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" aria-hidden="true"><path d="M13 14c4.5 6 4.5 14 0 20"/><path d="M21 9c7.5 8.5 7.5 21.5 0 30"/><path d="M29 4c10 11.5 10 28.5 0 40"/></svg></div>
     <div id="zoneTitle"><strong>Scanner is not on yet</strong></div>
     <div class="note" id="zoneNote">Press the button to start.</div>
     <p><button class="btn" id="startBtn">Start scanner</button></p>
   </div></div>
   <div id="result"></div>
   <div class="card">
-    <strong>Try without NFC</strong>
+    <strong class="cardh">Try without NFC</strong>
+    <div class="note">Pick a child to record a tap by hand.</div>
     <div class="frm c2"><div><label for="simGrade">Grade</label><select id="simGrade"></select></div><div><label for="simSec">Section</label><select id="simSec"></select></div></div>
     <label for="simQ">Search name</label><input id="simQ" type="search" placeholder="Type a child's name" autocomplete="off">
     <label for="simKid">Choose a child</label><select id="simKid"></select>
@@ -373,6 +430,7 @@ button{cursor:pointer}
 </main>
 
 <nav role="tablist" id="nav" hidden>
+  <div class="navbrand" aria-hidden="true"><img id="navLogo" alt=""><span id="navName">Tap-In Attendance</span></div>
   <button role="tab" aria-selected="true" data-tab="tap">Tap</button>
   <button role="tab" aria-selected="false" data-tab="kids">Children</button>
   <button role="tab" aria-selected="false" data-tab="log">Log</button>
@@ -818,7 +876,7 @@ const SFLOGO2='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAjQAAAEOCAYAAACego1
 let sfLogoCur2=SFLOGO2;
 try{const v=localStorage.getItem('sf2logo2');if(v)sfLogoCur2=v}catch(e){}
 $('sfLogoPrev2').src=sfLogoCur2;
-function setLogo(side,u){if(side===2){sfLogoCur2=u;$('sfLogoPrev2').src=u}else{sfLogoCur=u;$('sfLogoPrev').src=u}
+function setLogo(side,u){if(side===2){sfLogoCur2=u;$('sfLogoPrev2').src=u}else{sfLogoCur=u;$('sfLogoPrev').src=u;renderBrand()}
   if(sfMode==='s'&&sfSum)drawSum();else if(sfLast&&$('sfOut').firstChild)drawSF2()}
 function logoUp(side,def){const key=side===2?'sf2logo2':SFLOGOKEY;
   $(side===2?'sfLogoFile2':'sfLogoFile').onchange=e=>{const f=e.target.files[0];if(!f)return;if(!/^image\//.test(f.type)){toast('Choose an image file.');return}
@@ -830,6 +888,24 @@ function logoUp(side,def){const key=side===2?'sf2logo2':SFLOGOKEY;
     im.onerror=()=>toast('Could not read that image.');im.src=u};
   $(side===2?'sfLogoReset2':'sfLogoReset').onclick=()=>{try{localStorage.removeItem(key)}catch(e){}setLogo(side,def);toast('Default logo restored')}}
 logoUp(1,SFLOGO);logoUp(2,SFLOGO2);
+
+// --- Tap tab header: school logo + name, and a live 12-hour clock with the date
+function renderBrand(){
+  const nm=($('sfSchool').value||'').trim(),yr=($('sfYear').value||'').trim();
+  $('heroLogo').src=sfLogoCur;$('navLogo').src=sfLogoCur;
+  $('heroName').textContent=nm;$('heroName').hidden=!nm;$('heroSet').hidden=!!nm;
+  $('heroYear').textContent=yr?'School Year '+yr:'';$('heroYear').hidden=!yr;
+  $('navName').textContent=nm||'Tap-In Attendance'}
+$('heroSet').onclick=()=>{showTab('school');$('sfSchool').focus()};
+['sfSchool','sfYear'].forEach(i=>$(i).addEventListener('input',renderBrand));
+renderBrand();
+function tickClock(){
+  const d=new Date(),h=d.getHours(),s=d.getSeconds();
+  $('clkH').textContent=h%12||12;$('clkM').textContent=String(d.getMinutes()).padStart(2,'0');
+  $('clkS').textContent=':'+String(s).padStart(2,'0');$('clkAP').textContent=h<12?'AM':'PM';
+  $('clkDate').textContent=d.toLocaleDateString('en-PH',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const b=$('clkBar');b.style.transition=s?'transform 1s linear':'none';b.style.transform='scaleX('+(s+1)/60+')'}
+(function loop(){tickClock();setTimeout(loop,1000-Date.now()%1000+5)})();
 
 // --- SF2 school-year summary: per learner, present and absent days for every month (Jul-Jun)
 const SFMO=['JUL','AUG','SEP','OCT','NOV','DEC','JAN','FEB','MAR','APR','MAY','JUN'],SFMN=[7,8,9,10,11,12,1,2,3,4,5,6];
