@@ -54,6 +54,7 @@ input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1.5px so
 @media screen and (min-width:700px){.secgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;align-items:start}.secgrid>.card{margin-bottom:0}.secgrid{padding-bottom:14px}}
 @media (prefers-reduced-motion:reduce){.gbox>summary::after{transition:none}}
 .role-head #adjBox{display:none}
+#staffList>.day{font-weight:600;color:var(--mute);margin:8px 2px 0}
 .ihd{font-weight:600;color:var(--mute);margin:12px 2px 6px}
 .nbadge{display:inline-block;min-width:1.5em;margin-left:5px;padding:0 6px;border-radius:99px;background:var(--bad);color:#fff;font-size:.75rem;line-height:1.5}
 .note{font-size:.88rem;color:var(--mute)}
@@ -164,7 +165,7 @@ button{cursor:pointer}
   /* long lists flow into columns */
   #kidList,#logList,#bcList,#staffList{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:start;margin-bottom:12px}
   #kidList>.card,#logList>.card,#bcList>.card,#staffList>.card{margin-bottom:0}
-  #kidList>.day,#bcList>strong,#kidList>p,#logList>p,#staffList>p{grid-column:1/-1}
+  #kidList>.day,#bcList>strong,#kidList>p,#logList>p,#staffList>p,#staffList>.day{grid-column:1/-1}
   #kidList>.day{font-weight:600;color:var(--mute);margin:8px 2px 0}
   /* Children filters on one line */
   .kfbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:0 12px;align-items:end}
@@ -492,6 +493,14 @@ button{cursor:pointer}
     <p class="row" style="margin-top:12px"><button class="btn" id="addStaff" type="button">Add staff</button><button class="btn alt" id="stAddCancel" type="button">Cancel</button></p>
   
     </div>
+  </div>
+  <div class="kfbar">
+  <div class="sr"><input id="stQ" type="search" placeholder="Search staff name, email or phone" aria-label="Search staff" autocomplete="off"></div>
+  <div class="frm c2"><div><label for="stRole">Role</label><select id="stRole"></select></div>
+    <div><label for="stGroup">Group by</label><select id="stGroup"><option value="role">Role</option><option value="sec">Advisory section</option></select></div></div>
+  <div class="frm c2"><div><label for="stGrade">Grade</label><select id="stGrade"></select></div>
+    <div><label for="stSec">Section</label><select id="stSec"></select></div></div>
+  <div class="row" style="margin:8px 0"><span class="note" id="stCount"></span><button class="btn alt sm" id="stClear" type="button" hidden>Clear filters</button></div>
   </div>
   <div id="staffList"></div>
   <div class="modal" id="stModal" role="dialog" aria-modal="true" aria-labelledby="stModalTitle" hidden>
@@ -1199,14 +1208,52 @@ $('seSave').onclick=async()=>{
   catch(e){toast('Could not save ('+(e.code||'error')+').')}
   finally{$('seSave').disabled=false}};
 // --- staff management (admins only)
+// --- Staff tab: filter by role / grade / section, grouped by role or advisory section
+const STROLES={admin:'Admin',head:'School head',adviser:'Teacher / Adviser',gate:'Gate staff'},STORDER=['admin','head','adviser','gate'];
+const stRoleName=r=>STROLES[r]||'Staff',stRoleOf=x=>x.role||'staff',stSecs=x=>x.sections||[];
+function fillStaffFilter(){
+  const o=(v,t,on)=>`<option value="${esc(v)}"${on?' selected':''}>${esc(t)}</option>`,gOf=n=>splitSec(n)[0];
+  let r=$('stRole').value,g=$('stGrade').value,s=$('stSec').value;
+  const byRole=rr=>staffList.filter(x=>!rr||stRoleOf(x)===rr),
+    gradesFor=rr=>[...new Set(byRole(rr).flatMap(stSecs).map(gOf))].sort(cmp),
+    secsFor=(rr,gg)=>[...new Set(byRole(rr).flatMap(stSecs).filter(n=>!gg||gOf(n)===gg))].sort(cmp),
+    noneOk=(rr,gg)=>!gg&&byRole(rr).some(x=>!stSecs(x).length);
+  const roles=[...STORDER,...new Set(staffList.map(stRoleOf).filter(x=>!STORDER.includes(x)))].filter(x=>staffList.some(y=>stRoleOf(y)===x));
+  for(let i=0;i<3;i++){
+    if(r&&!roles.includes(r))r='';
+    if(g&&!gradesFor(r).includes(g))g='';
+    if(s&&!(secsFor(r,g).includes(s)||(s==='__none'&&noneOk(r,g))))s=''}
+  $('stRole').innerHTML=o('','All roles',!r)+roles.map(x=>o(x,stRoleName(x),x===r)).join('');
+  $('stGrade').innerHTML=o('','All grades',!g)+gradesFor(r).map(x=>o(x,x,x===g)).join('');
+  $('stSec').innerHTML=o('','All sections',!s)+secsFor(r,g).map(x=>o(x,g?(splitSec(x)[1]||x):x,x===s)).join('')+(noneOk(r,g)?o('__none','No advisory section',s==='__none'):'')}
+function viewStaff(){
+  const r=$('stRole').value,g=$('stGrade').value,s=$('stSec').value,q=$('stQ').value,bySec=$('stGroup').value==='sec',gOf=n=>splitSec(n)[0],
+    list=staffList.filter(x=>qMatch([x.name,x.email,x.phone].join(' '),q)&&(!r||stRoleOf(x)===r)&&(!g||stSecs(x).some(n=>gOf(n)===g))
+      &&(!s||(s==='__none'?!stSecs(x).length:stSecs(x).includes(s)))).sort((x,y)=>cmp(x.name||x.email||'',y.name||y.email||''));
+  const on=r||g||s||normQ(q);
+  $('stClear').hidden=!(on||$('stGroup').value!=='role');
+  $('stCount').textContent=on?`Showing ${list.length} of ${staffList.length}`:`${staffList.length} staff`;
+  const out=[],G={};
+  if(bySec){
+    list.forEach(x=>{let ns=stSecs(x).filter(n=>(!s||s==='__none'||n===s)&&(!g||gOf(n)===g));if(!ns.length)ns=['__none'];ns.forEach(n=>(G[n]=G[n]||[]).push(x))});
+    Object.keys(G).sort((a,b)=>a==='__none'?1:b==='__none'?-1:cmp(a,b)).forEach(n=>{out.push({_h:`${n==='__none'?'No advisory section':n} (${G[n].length})`});G[n].forEach(x=>out.push(x))})
+  }else{
+    list.forEach(x=>(G[stRoleOf(x)]=G[stRoleOf(x)]||[]).push(x));
+    [...STORDER,...Object.keys(G).filter(k=>!STORDER.includes(k))].filter(k=>G[k]).forEach(k=>{out.push({_h:`${stRoleName(k)} (${G[k].length})`});G[k].forEach(x=>out.push(x))})}
+  return out}
 function renderStaff(){
   const me=auth.currentUser&&auth.currentUser.uid;
-  $('staffList').innerHTML=staffList.length?staffList.map(x=>`<div class="card"><div class="row"><div class="who">${av(x)}<div><strong>${esc(x.name||x.email||x.id)}</strong>${x.name?`<div class="note">${esc(x.email||'')}</div>`:''}${x.phone||x.gender?`<div class="note">${[x.gender==='M'?'Male':x.gender==='F'?'Female':'',x.phone].filter(Boolean).map(esc).join(' | ')}</div>`:''}</div></div><span class="tag ${x.role==='admin'?'ok':''}">${({admin:'Admin',adviser:'Adviser',gate:'Gate staff',head:'School head'})[x.role]||'Staff'}</span></div>
-   ${x.role==='adviser'?secBoxes(x):''}<div class="row" style="margin-top:8px"><span><button class="btn alt sm" data-se="${x.id}">Edit</button> ${x.email?`<button class="btn alt sm" data-r="${esc(x.email)}">Send password reset</button>`:''}</span>${x.id===me?'<span class="note">You</span>':`<button class="btn alt sm" data-x="${x.id}">Remove</button>`}</div></div>`).join(''):'<p class="note">No staff yet.</p>';
+  const staffCard=x=>`<div class="card"><div class="row"><div class="who">${av(x)}<div><strong>${esc(x.name||x.email||x.id)}</strong>${x.name?`<div class="note">${esc(x.email||'')}</div>`:''}${x.phone||x.gender?`<div class="note">${[x.gender==='M'?'Male':x.gender==='F'?'Female':'',x.phone].filter(Boolean).map(esc).join(' | ')}</div>`:''}</div></div><span class="tag ${x.role==='admin'?'ok':''}">${({admin:'Admin',adviser:'Adviser',gate:'Gate staff',head:'School head'})[x.role]||'Staff'}</span></div>
+   ${x.role==='adviser'?secBoxes(x):''}<div class="row" style="margin-top:8px"><span><button class="btn alt sm" data-se="${x.id}">Edit</button> ${x.email?`<button class="btn alt sm" data-r="${esc(x.email)}">Send password reset</button>`:''}</span>${x.id===me?'<span class="note">You</span>':`<button class="btn alt sm" data-x="${x.id}">Remove</button>`}</div></div>`;
+  fillStaffFilter();const sv=viewStaff();
+  $('staffList').innerHTML=staffList.length?(sv.length?sv.map(x=>x._h?`<div class="day">${esc(x._h)}</div>`:staffCard(x)).join(''):'<p class="note">No staff match this filter.</p>'):'<p class="note">No staff yet.</p>';
   document.querySelectorAll('[data-sc]').forEach(c=>c.onchange=()=>{const id=c.dataset.sc,v=[...document.querySelectorAll('[data-sc="'+id+'"]:checked')].map(z=>z.value);updateDoc(doc(db,'staff',id),{sections:v}).then(()=>toast('Sections saved'),()=>toast('Could not save.'))});
   document.querySelectorAll('[data-se]').forEach(b=>b.onclick=()=>openStEdit(b.dataset.se));
   document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>sendPasswordResetEmail(auth,b.dataset.r).then(()=>toast('Reset email sent.'),()=>toast('Could not send the reset email.')));
   document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{if(confirm('Remove this staff member? They will lose access.'))deleteDoc(doc(db,'staff',b.dataset.x)).catch(()=>toast('Could not remove.'))})}
+$('stQ').oninput=()=>renderStaff();
+['stRole','stGrade','stSec','stGroup'].forEach(i=>$(i).onchange=()=>renderStaff());
+$('stClear').onclick=()=>{$('stQ').value='';$('stRole').value='';$('stGrade').value='';$('stSec').value='';$('stGroup').value='role';renderStaff()};
 $('addStaff').onclick=async()=>{
   const email=$('sEmail').value.trim().toLowerCase(),pw=$('sPw').value,last=$('sLast').value.trim(),first=$('sFirst').value.trim(),mid=$('sMid').value.trim(),
     name=[last,first,mid].filter(Boolean).join(', '),phone=$('sPhone').value.trim(),gender=$('sGender').value,role=$('sRole').value;
