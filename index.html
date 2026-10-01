@@ -203,6 +203,10 @@ button{cursor:pointer}
 
 .mono{display:grid;place-items:center;flex:none;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font-weight:600;box-shadow:0 0 0 4px rgba(255,255,255,.12)}
 .hero-logo.mono{font-size:2.2rem;padding:0;background:rgba(255,255,255,.16);color:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.2)}
+.lgbrand{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;margin:4px 0 14px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.lgbrand img,.lgbrand .mono{width:84px;height:84px;border-radius:50%;object-fit:cover;flex:none}
+.lgbrand .mono{font-size:2rem;background:var(--acc);color:var(--acc-ink);box-shadow:none}
+.lgbrand .lgname{font-size:1.1rem;font-weight:600;line-height:1.25;overflow-wrap:anywhere}
 .navbrand .mono{width:44px;height:44px;font-size:1.2rem;background:var(--acc);color:var(--acc-ink);box-shadow:none}
 .mono svg{width:46%;height:46%}
 .schprev{display:inline-grid;place-items:center;min-width:56px;height:56px}
@@ -293,6 +297,7 @@ button{cursor:pointer}
 </div>
 
 <div id="login" class="card" hidden>
+  <div class="lgbrand" id="loginBrand" hidden><img id="loginLogo" alt="School logo" hidden><span class="mono" id="loginMono" aria-hidden="true" hidden></span><span class="lgname" id="loginName"></span></div>
   <strong>Staff login</strong>
   <p class="note" id="loginMsg"></p>
   <label for="em">Email</label><input id="em" type="email" autocomplete="username">
@@ -1087,7 +1092,10 @@ function renderBrand(){
   if(schLogo)$('schLogoPrev').src=schLogo;
   $('heroName').textContent=nm;$('heroName').hidden=!nm;$('heroSet').hidden=!!nm;
   $('heroYear').textContent=yr?'School Year '+yr:'';$('heroYear').hidden=!yr;
-  $('navName').textContent=nm||'Tap-In Attendance'}
+  $('navName').textContent=nm||'Tap-In Attendance';
+  {const lg=$('loginLogo'),lm=$('loginMono');$('loginBrand').hidden=!(schLogo||nm);lg.hidden=!schLogo;if(schLogo)lg.src=schLogo;
+   lm.hidden=!!schLogo||!nm;if(!schLogo&&nm){if(ini)lm.textContent=ini;else lm.innerHTML=MONOSVG}
+   $('loginName').textContent=nm}}
 $('schLogoFile').onchange=e=>{const f=e.target.files[0];if(!f)return;if(!/^image\//.test(f.type)){toast('Choose an image file.');return}
   const im=new Image(),u=URL.createObjectURL(f);
   im.onload=()=>{const sc=Math.min(1,256/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
