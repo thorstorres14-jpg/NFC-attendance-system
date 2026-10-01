@@ -11,6 +11,8 @@ service cloud.firestore {
     // admin and legacy 'staff' manage children; gate staff only tap; advisers only read their sections.
     function canManage() { return isStaff() && me().role in ['admin', 'staff']; }
     function canTap()    { return isStaff() && me().role in ['admin', 'staff', 'gate']; }
+    // School head: can read children, taps and attendance for every section, but never change anything.
+    function isHead()    { return isStaff() && me().role == 'head'; }
     function myAdvised(sec) {
       return isStaff() && me().role == 'adviser' && sec in me().get('sections', []);
     }
@@ -34,7 +36,7 @@ service cloud.firestore {
     // Make the very first admin by hand: set role = "admin" on your own document in the console.
     match /staff/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
-      allow create: if isAdmin() && request.resource.data.role in ['adviser', 'gate', 'admin'];
+      allow create: if isAdmin() && request.resource.data.role in ['adviser', 'gate', 'head', 'admin'];
       // Admins can change a staff member's section assignment and personal details (never email or role).
       allow update: if isAdmin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sections', 'name', 'phone', 'gender'])
@@ -66,7 +68,7 @@ service cloud.firestore {
     }
 
     match /kids/{id} {
-      allow read: if canTap() || myAdvised(resource.data.get('section', '')) || isParent(resource.data.parentEmails);
+      allow read: if canTap() || isHead() || myAdvised(resource.data.get('section', '')) || isParent(resource.data.parentEmails);
       allow create, delete: if canManage();
       // Parents may change contact details only, and only while the school has the switch on.
       allow update: if canManage()
@@ -132,7 +134,7 @@ service cloud.firestore {
     }
 
     match /log/{id} {
-      allow read: if canTap() || myAdvised(resource.data.get('section', '')) || isParent(resource.data.parentEmails);
+      allow read: if canTap() || isHead() || myAdvised(resource.data.get('section', '')) || isParent(resource.data.parentEmails);
       allow create: if canTap();
       allow update: if canManage()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parentEmails', 'name', 'section']);
@@ -142,7 +144,7 @@ service cloud.firestore {
     // Attendance edits. Admin/staff can edit any section; advisers only their own.
     // Never deleted, and the history list can only grow, so every change leaves a trace.
     match /adjustments/{id} {
-      allow read: if canManage() || myAdvised(resource.data.get('section', ''));
+      allow read: if canManage() || isHead() || myAdvised(resource.data.get('section', ''));
       allow create: if (canManage() || myAdvised(request.resource.data.get('section', '')))
         && request.resource.data.by == request.auth.uid
         && request.resource.data.status in ['P', 'T', 'A', 'auto'];
