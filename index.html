@@ -163,9 +163,6 @@ button{cursor:pointer}
   /* Tap tab: scanner on the left, "try without NFC" on the right */
   #tab-tap.on{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start}
   #tab-tap>.zone{grid-column:1;grid-row:1}#tab-tap>#result{grid-column:1;grid-row:2}#tab-tap>.card{grid-column:2;grid-row:1/span 2;margin:0}
-  /* Staff tab: add form on the left, staff list on the right */
-  #tab-staff.on{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:16px;align-items:start}
-  #tab-staff>.card{margin:0}
   /* Manage > Grades & sections */
   #mp-sec:not([hidden]){display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:16px;align-items:start}
   #mp-sec>.card{margin:0}
@@ -321,8 +318,10 @@ button{cursor:pointer}
 </section>
 
 <section id="tab-staff">
-  <div class="card">
-    <strong>Add staff</strong>
+  <p class="row"><button class="btn" id="openStaff" type="button">+ Add staff</button></p>
+  <div class="modal" id="stAddModal" role="dialog" aria-modal="true" aria-labelledby="stAddTitle" hidden>
+    <div class="modal-box">
+    <strong id="stAddTitle" class="mh">Add staff</strong>
     <p class="note">Creates a staff login. Give the person the email and a temporary password.</p>
     <div class="photo"><div class="av lg" id="sPhotoPrev">📷</div><div class="photo-btns"><button type="button" class="btn alt sm" id="sPhotoBtn">Upload photo</button><button type="button" class="btn alt sm" id="sPhotoDel" hidden>Remove photo</button><input type="file" id="sPhotoFile" accept="image/*" hidden></div></div>
     <div class="frm c3"><div><label for="sLast">Last name</label><input id="sLast" autocomplete="off"></div>
@@ -335,7 +334,9 @@ button{cursor:pointer}
     <div class="frm c2" id="sAdvWrap"><div><label for="sGrade">Advisory grade</label><select id="sGrade"></select></div>
       <div><label for="sSecName">Advisory section</label><select id="sSecName"></select></div></div>
     <div class="frm"><div><label for="sPw">Temporary password (at least 6 characters)</label><input id="sPw" type="text" autocomplete="off"></div></div>
-    <p><button class="btn" id="addStaff">Add staff</button></p>
+    <p class="row" style="margin-top:12px"><button class="btn" id="addStaff" type="button">Add staff</button><button class="btn alt" id="stAddCancel" type="button">Cancel</button></p>
+  
+    </div>
   </div>
   <div id="staffList"></div>
   <div class="modal" id="stModal" role="dialog" aria-modal="true" aria-labelledby="stModalTitle" hidden>
@@ -831,6 +832,11 @@ function sfSumCsv(){const S=sfSum,rows=['Name,Sex,'+SFMO.map(m=>'Present '+m).jo
   .concat(S.rows.map(r=>`"${r.kid.name}",${r.kid.sex||''},${r.att.join(',')},${sumT(r.att)},${r.ab.join(',')},${sumT(r.ab)}`)).join('\n');
   navigator.clipboard&&navigator.clipboard.writeText(rows).then(()=>toast('Summary CSV copied'),()=>toast('Could not copy'))}
 
+// --- Add staff modal
+function openStAdd(){fillStSec();$('stAddModal').hidden=false;document.body.classList.add('modal-open');$('stAddModal').firstElementChild.scrollTop=0;setTimeout(()=>$('sLast').focus(),50)}
+function closeStAdd(){$('stAddModal').hidden=true;document.body.classList.remove('modal-open')}
+$('openStaff').onclick=openStAdd;$('stAddCancel').onclick=closeStAdd;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('stAddModal').hidden)closeStAdd()});
 // --- Add staff form: advisory grade/section choices (teachers only)
 function fillStSec(){
   const n=secList.map(x=>x.name),sp=x=>{const a=x.split(' - ');return [a[0],a.slice(1).join(' - ')]},o=(v,t,on)=>`<option value="${esc(v)}"${on?' selected':''}>${esc(t)}</option>`;
@@ -881,7 +887,7 @@ $('addStaff').onclick=async()=>{
   try{
     const c=await createUserWithEmailAndPassword(auth2,email,pw);
     await setDoc(doc(db,'staff',c.user.uid),{role,email,name,phone,gender,photo:photos.s,sections:sec?[sec]:[]});
-    ['sLast','sFirst','sMid','sEmail','sPhone','sPw'].forEach(id=>$(id).value='');$('sGender').value='';$('sGrade').value='';setPhoto('s','');fillStSec();toast('Staff added.');
+    ['sLast','sFirst','sMid','sEmail','sPhone','sPw'].forEach(id=>$(id).value='');$('sGender').value='';$('sGrade').value='';setPhoto('s','');fillStSec();closeStAdd();toast('Staff added.');
   }catch(e){toast(e.code==='auth/email-already-in-use'?'That email already has an account. Use a different email.':'Could not add staff ('+(e.code||e.message)+').')}
   finally{try{await signOut(auth2)}catch(x){}}};
 
