@@ -118,6 +118,10 @@ main:has(#tab-sf2.on){max-width:1180px}
 /* Manage tab sections */
 .seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.seg button{flex:1;min-width:0;padding:9px 6px;border:1.5px solid var(--line);border-radius:12px;background:transparent;color:var(--mute);font:inherit;font-size:.85rem;font-weight:500;cursor:pointer}
 .seg button[aria-selected="true"]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.who{display:flex;gap:10px;align-items:flex-start;min-width:0}.who>div,.who>strong{min-width:0}
+.av{width:44px;height:44px;border-radius:50%;object-fit:cover;background:var(--line);color:var(--mute);display:inline-grid;place-items:center;font-weight:600;font-size:.9rem;flex:none;overflow:hidden}
+.av.lg{width:72px;height:72px;font-size:1.6rem}
+.photo{display:flex;gap:12px;align-items:center;margin:10px 0 4px}.photo-btns{display:flex;gap:8px;flex-wrap:wrap}
 /* search boxes */
 .sr{display:flex;gap:8px;align-items:center;margin:8px 0}.sr input{flex:1;min-width:0}.sr .btn{flex:none;white-space:nowrap}
 /* Add/Edit child modal */
@@ -219,6 +223,7 @@ button{cursor:pointer}
   <div class="modal" id="kidModal" role="dialog" aria-modal="true" aria-labelledby="formTitle" hidden>
     <div class="modal-box">
     <strong id="formTitle" class="mh">Add a child</strong>
+    <div class="photo"><div class="av lg" id="kPhotoPrev">📷</div><div class="photo-btns"><button type="button" class="btn alt sm" id="kPhotoBtn">Upload photo</button><button type="button" class="btn alt sm" id="kPhotoDel" hidden>Remove photo</button><input type="file" id="kPhotoFile" accept="image/*" hidden></div></div>
     <div class="frm c3"><div><label for="kLast">Last name</label><input id="kLast" autocomplete="off"></div>
       <div><label for="kFirst">First name</label><input id="kFirst" autocomplete="off"></div>
       <div><label for="kMid">Middle name</label><input id="kMid" autocomplete="off"></div></div>
@@ -319,6 +324,7 @@ button{cursor:pointer}
   <div class="card">
     <strong>Add staff</strong>
     <p class="note">Creates a staff login. Give the person the email and a temporary password.</p>
+    <div class="photo"><div class="av lg" id="sPhotoPrev">📷</div><div class="photo-btns"><button type="button" class="btn alt sm" id="sPhotoBtn">Upload photo</button><button type="button" class="btn alt sm" id="sPhotoDel" hidden>Remove photo</button><input type="file" id="sPhotoFile" accept="image/*" hidden></div></div>
     <div class="frm c3"><div><label for="sLast">Last name</label><input id="sLast" autocomplete="off"></div>
       <div><label for="sFirst">First name</label><input id="sFirst" autocomplete="off"></div>
       <div><label for="sMid">Middle name</label><input id="sMid" autocomplete="off"></div></div>
@@ -336,6 +342,7 @@ button{cursor:pointer}
     <div class="modal-box">
       <strong id="stModalTitle" class="mh">Edit staff details</strong>
       <p class="note" id="stModalEmail"></p>
+      <div class="photo"><div class="av lg" id="sePhotoPrev">📷</div><div class="photo-btns"><button type="button" class="btn alt sm" id="sePhotoBtn">Upload photo</button><button type="button" class="btn alt sm" id="sePhotoDel" hidden>Remove photo</button><input type="file" id="sePhotoFile" accept="image/*" hidden></div></div>
       <div class="frm c3"><div><label for="seLast">Last name</label><input id="seLast" autocomplete="off"></div>
         <div><label for="seFirst">First name</label><input id="seFirst" autocomplete="off"></div>
         <div><label for="seMid">Middle name</label><input id="seMid" autocomplete="off"></div></div>
@@ -465,10 +472,27 @@ function showResult(k,e){
   if(!k){r.innerHTML='<div class="card"><strong>Unknown card</strong><div class="note">Go to "Children" and link this card to a child.</div></div>';return}
   z.classList.add('hit');setTimeout(()=>z.classList.remove('hit'),1800);
   const m=message(k,e);
-  r.innerHTML=`<div class="card"><div class="row"><strong>${esc(k.name)}</strong><span class="tag ok">${e.type==='in'?'Arrived':'Left'} ${fmt(e.time)}</span></div>
+  r.innerHTML=`<div class="card"><div class="row"><div class="who" style="align-items:center">${av(k,true)}<strong>${esc(k.name)}</strong></div><span class="tag ok">${e.type==='in'?'Arrived':'Left'} ${fmt(e.time)}</span></div>
   <div class="msg">${esc(m)}</div>
   <a class="btn sm" href="sms:${encodeURIComponent(k.phone)}?body=${encodeURIComponent(m)}">Send to ${esc(k.parent||'parent')}</a></div>`}
 
+// --- photos: resized to a small square JPEG and saved inside the record (no extra storage service needed)
+const photos={k:'',s:'',se:''};
+function initials(n){const a=splitName(n);return ((a[1]||'')[0]||'')+((a[0]||'')[0]||'')||'?'}
+function av(x,big){const src=x&&x.photo,cls='av'+(big?' lg':'');
+  return src&&/^data:image\/(jpeg|png|webp);base64,/.test(src)?`<img class="${cls}" alt="" src="${src}">`:`<span class="${cls}" aria-hidden="true">${esc(initials(x&&(x.name||x.email)).toUpperCase())}</span>`}
+function setPhoto(p,d){photos[p]=d||'';const pv=$(p+'PhotoPrev');
+  pv.innerHTML=d?`<img class="av lg" alt="Photo" src="${d}" style="width:100%;height:100%">`:'📷';$(p+'PhotoDel').hidden=!d;$(p+'PhotoBtn').textContent=d?'Change photo':'Upload photo'}
+function fileToPhoto(file){return new Promise((res,rej)=>{const url=URL.createObjectURL(file),img=new Image();
+  img.onload=()=>{const S=192,c=document.createElement('canvas');c.width=c.height=S;const m=Math.min(img.width,img.height),x=c.getContext('2d');
+    x.fillStyle='#fff';x.fillRect(0,0,S,S);x.drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,S,S);URL.revokeObjectURL(url);res(c.toDataURL('image/jpeg',0.8))};
+  img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('bad image'))};img.src=url})}
+['k','s','se'].forEach(p=>{
+  $(p+'PhotoBtn').onclick=()=>$(p+'PhotoFile').click();
+  $(p+'PhotoDel').onclick=()=>{setPhoto(p,'');$(p+'PhotoFile').value=''};
+  $(p+'PhotoFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;
+    if(!/^image\//.test(f.type)){toast('Choose an image file.');return}
+    try{setPhoto(p,await fileToPhoto(f))}catch(x){toast('Could not read that photo.')}e.target.value=''}});
 // --- search helper: every word typed must appear somewhere in the text (ignores case, commas and periods)
 function normQ(x){return String(x||'').toLowerCase().replace(/[,.]/g,' ').replace(/\s+/g,' ').trim()}
 function qMatch(hay,q){q=normQ(q);if(!q)return true;hay=normQ(hay);return q.split(' ').every(w=>hay.includes(w))}
@@ -479,6 +503,7 @@ function setForm(k){
   editing=k?k.id:null;
   $('formTitle').textContent=k?'Edit child':'Add a child';
   $('addKid').textContent=k?'Save':'Add';
+  setPhoto('k',k?k.photo:'');
   const e=k?emailsOf(k):[];
   $('kSex').value=k?(k.sex||''):'';fillKSec(k?k.section:'');$('kSec').value=k?(k.section||''):'';{const nm=k?splitName(k.name):['','',''];$('kLast').value=nm[0];$('kFirst').value=nm[1];$('kMid').value=nm[2]}$('kParent').value=k?(k.parent||''):'';$('kPhone').value=k?k.phone:'';$('kAltName').value=k?(k.altName||''):'';$('kAltPhone').value=k?(k.altPhone||''):'';
   $('kEmail').value=e[0]||'';$('kEmail2').value=e[1]||''}
@@ -497,19 +522,19 @@ $('addKid').onclick=async()=>{
   try{
     if(editing){
       const id=editing;
-      await updateDoc(doc(db,'kids',id),{name,parent,phone,altName,altPhone,parentEmails:emails,sex,section});
+      await updateDoc(doc(db,'kids',id),{name,parent,phone,altName,altPhone,parentEmails:emails,sex,section,photo:photos.k});
       const snap=await getDocs(query(collection(db,'log'),where('kidId','==',id)));
       for(let i=0;i<snap.docs.length;i+=400){const bt=writeBatch(db);snap.docs.slice(i,i+400).forEach(d=>bt.update(d.ref,{parentEmails:emails,name,section}));await bt.commit()}
       toast('Changes saved');
     }else{
-      await addDoc(collection(db,'kids'),{name,parent,phone,altName,altPhone,parentEmails:emails,uid:null,sex,section});toast('Added '+name)}
+      await addDoc(collection(db,'kids'),{name,parent,phone,altName,altPhone,parentEmails:emails,uid:null,sex,section,photo:photos.k});toast('Added '+name)}
     closeKid();
   }catch(e){toast('Could not save ('+(e.code||e.message)+').')}};
 
 function render(){fillSec();renderSecs();
   fillSim();
   fillKidFilter();const kview=viewKids();
-  $('kidList').innerHTML=kids.length?(kview.length?kview.map(k=>k._h?`<div class="day">${esc(k._h)}</div>`:`<div class="card"><div class="row"><div><strong>${esc(k.name)}</strong><div class="note">${k.sex==='M'?'Male':k.sex==='F'?'Female':'Sex not set'} | ${esc(k.section||'No section')}</div><div class="note">${esc(k.parent||'')} ${esc(k.phone)}</div>${k.altPhone?`<div class="note">Alternate: ${esc(k.altName||'')} ${esc(k.altPhone)}</div>`:''}${k.contactUpdatedAt?`<div class="note">Contact details updated by a parent on ${new Date(k.contactUpdatedAt).toLocaleDateString('en-PH',{month:'short',day:'numeric'})}</div>`:''}<div class="note">${esc(emailsOf(k).join(', '))}</div></div>
+  $('kidList').innerHTML=kids.length?(kview.length?kview.map(k=>k._h?`<div class="day">${esc(k._h)}</div>`:`<div class="card"><div class="row"><div class="who">${av(k)}<div><strong>${esc(k.name)}</strong><div class="note">${k.sex==='M'?'Male':k.sex==='F'?'Female':'Sex not set'} | ${esc(k.section||'No section')}</div><div class="note">${esc(k.parent||'')} ${esc(k.phone)}</div>${k.altPhone?`<div class="note">Alternate: ${esc(k.altName||'')} ${esc(k.altPhone)}</div>`:''}${k.contactUpdatedAt?`<div class="note">Contact details updated by a parent on ${new Date(k.contactUpdatedAt).toLocaleDateString('en-PH',{month:'short',day:'numeric'})}</div>`:''}<div class="note">${esc(emailsOf(k).join(', '))}</div></div></div>
    <span class="tag ${k.uid?'ok':'no'}">${k.uid?'Has card':'No card'}</span></div>
    <div class="row" style="margin-top:8px"><button class="btn alt sm" data-a="${k.id}">${assigning===k.id?'Waiting for a tap...':(k.uid?'Replace card':'Link card')}</button>
    <span><button class="btn alt sm" data-e="${k.id}">Edit</button> <button class="btn alt sm" data-d="${k.id}">Remove</button></span></div></div>`).join(''):'<p class="note">No children match this filter.</p>'):'<p class="note">No children yet. Tap "+ Add child" above.</p>';
@@ -519,7 +544,7 @@ function render(){fillSec();renderSecs();
   const all=[...logs].reverse(),lq=$('logQ').value,t=all.filter(l=>qMatch(l.name,lq));
   $('logClear').hidden=!normQ(lq);
   $('logHead').textContent='Today ('+(normQ(lq)?t.length+' of '+all.length:t.length)+')';
-  $('logList').innerHTML=t.length?t.map(l=>`<div class="card row"><strong>${esc(l.name)}</strong><span class="tag ${l.type==='in'?'ok':''}">${l.type==='in'?'Arrived':'Left'} ${fmt(l.time)}</span></div>`).join(''):`<p class="note">${all.length?'No names match your search.':'No taps yet today.'}</p>`}
+  $('logList').innerHTML=t.length?t.map(l=>`<div class="card row"><div class="who" style="align-items:center">${av(kids.find(k=>k.id===l.kidId)||{name:l.name})}<strong>${esc(l.name)}</strong></div><span class="tag ${l.type==='in'?'ok':''}">${l.type==='in'?'Arrived':'Left'} ${fmt(l.time)}</span></div>`).join(''):`<p class="note">${all.length?'No names match your search.':'No taps yet today.'}</p>`}
 $('logQ').oninput=()=>render();
 $('logClear').onclick=()=>{$('logQ').value='';render()};
 
@@ -821,7 +846,7 @@ let stEditing=null;
 function openStEdit(id){const x=staffList.find(z=>z.id===id);if(!x){toast('Staff member not found.');return}
   stEditing=id;const nm=splitName(x.name);
   $('stModalEmail').textContent=x.email||'';
-  $('seLast').value=nm[0];$('seFirst').value=nm[1];$('seMid').value=nm[2];$('sePhone').value=x.phone||'';$('seGender').value=x.gender||'';
+  setPhoto('se',x.photo);$('seLast').value=nm[0];$('seFirst').value=nm[1];$('seMid').value=nm[2];$('sePhone').value=x.phone||'';$('seGender').value=x.gender||'';
   $('stModal').hidden=false;document.body.classList.add('modal-open');$('stModal').firstElementChild.scrollTop=0;setTimeout(()=>$('seLast').focus(),50)}
 function closeStEdit(){$('stModal').hidden=true;document.body.classList.remove('modal-open');stEditing=null}
 $('seCancel').onclick=closeStEdit;
@@ -830,14 +855,14 @@ $('seSave').onclick=async()=>{
   const last=$('seLast').value.trim(),first=$('seFirst').value.trim(),mid=$('seMid').value.trim();
   if(!last||!first){toast('Enter the last and first name.');return}
   $('seSave').disabled=true;
-  try{await updateDoc(doc(db,'staff',stEditing),{name:[last,first,mid].filter(Boolean).join(', '),phone:$('sePhone').value.trim(),gender:$('seGender').value});
+  try{await updateDoc(doc(db,'staff',stEditing),{name:[last,first,mid].filter(Boolean).join(', '),phone:$('sePhone').value.trim(),gender:$('seGender').value,photo:photos.se});
     closeStEdit();toast('Staff details saved.')}
   catch(e){toast('Could not save ('+(e.code||'error')+').')}
   finally{$('seSave').disabled=false}};
 // --- staff management (admins only)
 function renderStaff(){
   const me=auth.currentUser&&auth.currentUser.uid;
-  $('staffList').innerHTML=staffList.length?staffList.map(x=>`<div class="card"><div class="row"><div><strong>${esc(x.name||x.email||x.id)}</strong>${x.name?`<div class="note">${esc(x.email||'')}</div>`:''}${x.phone||x.gender?`<div class="note">${[x.gender==='M'?'Male':x.gender==='F'?'Female':'',x.phone].filter(Boolean).map(esc).join(' | ')}</div>`:''}</div><span class="tag ${x.role==='admin'?'ok':''}">${({admin:'Admin',adviser:'Adviser',gate:'Gate staff'})[x.role]||'Staff'}</span></div>
+  $('staffList').innerHTML=staffList.length?staffList.map(x=>`<div class="card"><div class="row"><div class="who">${av(x)}<div><strong>${esc(x.name||x.email||x.id)}</strong>${x.name?`<div class="note">${esc(x.email||'')}</div>`:''}${x.phone||x.gender?`<div class="note">${[x.gender==='M'?'Male':x.gender==='F'?'Female':'',x.phone].filter(Boolean).map(esc).join(' | ')}</div>`:''}</div></div><span class="tag ${x.role==='admin'?'ok':''}">${({admin:'Admin',adviser:'Adviser',gate:'Gate staff'})[x.role]||'Staff'}</span></div>
    ${x.role==='adviser'?secBoxes(x):''}<div class="row" style="margin-top:8px"><span><button class="btn alt sm" data-se="${x.id}">Edit</button> ${x.email?`<button class="btn alt sm" data-r="${esc(x.email)}">Send password reset</button>`:''}</span>${x.id===me?'<span class="note">You</span>':`<button class="btn alt sm" data-x="${x.id}">Remove</button>`}</div></div>`).join(''):'<p class="note">No staff yet.</p>';
   document.querySelectorAll('[data-sc]').forEach(c=>c.onchange=()=>{const id=c.dataset.sc,v=[...document.querySelectorAll('[data-sc="'+id+'"]:checked')].map(z=>z.value);updateDoc(doc(db,'staff',id),{sections:v}).then(()=>toast('Sections saved'),()=>toast('Could not save.'))});
   document.querySelectorAll('[data-se]').forEach(b=>b.onclick=()=>openStEdit(b.dataset.se));
@@ -855,8 +880,8 @@ $('addStaff').onclick=async()=>{
   if(role==='admin'&&!confirm('Make '+name+' an ADMIN?\n\nAdmins can control everything in the app: children, attendance, staff, announcements and settings. They can also add or remove other staff.'))return;
   try{
     const c=await createUserWithEmailAndPassword(auth2,email,pw);
-    await setDoc(doc(db,'staff',c.user.uid),{role,email,name,phone,gender,sections:sec?[sec]:[]});
-    ['sLast','sFirst','sMid','sEmail','sPhone','sPw'].forEach(id=>$(id).value='');$('sGender').value='';$('sGrade').value='';fillStSec();toast('Staff added.');
+    await setDoc(doc(db,'staff',c.user.uid),{role,email,name,phone,gender,photo:photos.s,sections:sec?[sec]:[]});
+    ['sLast','sFirst','sMid','sEmail','sPhone','sPw'].forEach(id=>$(id).value='');$('sGender').value='';$('sGrade').value='';setPhoto('s','');fillStSec();toast('Staff added.');
   }catch(e){toast(e.code==='auth/email-already-in-use'?'That email already has an account. Use a different email.':'Could not add staff ('+(e.code||e.message)+').')}
   finally{try{await signOut(auth2)}catch(x){}}};
 
