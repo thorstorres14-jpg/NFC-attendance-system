@@ -115,6 +115,9 @@ main:has(#tab-sf2.on){max-width:1180px}
 .fr{grid-template-columns:1.4em 20em minmax(0,1fr) 2.6em;font-size:.86em;gap:4px}.fr>span:nth-child(2){text-align:left;white-space:nowrap}
 .sfg>div.gl{min-width:0}.sf.sfsum{table-layout:fixed;width:100%}.sfsum td,.sfsum th{overflow-wrap:anywhere}.gr{min-width:0;box-sizing:border-box}.sfg{max-width:100%}.fr{min-width:0}
 .fr .frac{display:grid;justify-self:center;width:max-content;max-width:100%;text-align:center}.fr .frac b{padding:0 6px}.fr>span:last-child{text-align:left}
+/* Manage tab sections */
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.seg button{flex:1;min-width:0;padding:9px 6px;border:1.5px solid var(--line);border-radius:12px;background:transparent;color:var(--mute);font:inherit;font-size:.85rem;font-weight:500;cursor:pointer}
+.seg button[aria-selected="true"]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
 /* search boxes */
 .sr{display:flex;gap:8px;align-items:center;margin:8px 0}.sr input{flex:1;min-width:0}.sr .btn{flex:none;white-space:nowrap}
 /* Add/Edit child modal */
@@ -227,27 +230,44 @@ body.modal-open{overflow:hidden}
 </section>
 
 <section id="tab-manage">
-  <div class="card">
-    <strong>Broadcast to all parents</strong>
-    <p class="note">Appears in every parent's Tap-In app right away. Use it for urgent notices such as class suspensions.</p>
-    <label for="bcTitle">Title (optional)</label><input id="bcTitle" maxlength="100" autocomplete="off" placeholder="School announcement">
-    <label for="bcBody">Message</label><textarea id="bcBody" maxlength="1000" placeholder="Due to the weather conditions, there will be no classes tomorrow because of the typhoon."></textarea>
-    <p><button class="btn" id="bcSend">Send to all parents</button></p>
+  <div class="seg" role="tablist" aria-label="Manage sections">
+    <button type="button" role="tab" aria-selected="true" data-mp="ann">Announcements</button>
+    <button type="button" role="tab" aria-selected="false" data-mp="acc">Parent access</button>
+    <button type="button" role="tab" aria-selected="false" data-mp="sec">Grades &amp; sections</button>
+  </div>
+
+  <div class="mpanel" id="mp-ann">
+    <p class="row"><button class="btn" id="openBc" type="button">+ Add announcement</button></p>
     <div id="bcList"></div>
+    <div class="modal" id="bcModal" role="dialog" aria-modal="true" aria-labelledby="bcModalTitle" hidden>
+      <div class="modal-box">
+        <strong id="bcModalTitle" class="mh">Announce to all parents</strong>
+        <p class="note">Appears in every parent's Tap-In app right away. Use it for urgent notices such as class suspensions.</p>
+        <label for="bcTitle">Title (optional)</label><input id="bcTitle" maxlength="100" autocomplete="off" placeholder="School announcement">
+        <label for="bcBody">Message</label><textarea id="bcBody" maxlength="1000" placeholder="Due to the weather conditions, there will be no classes tomorrow because of the typhoon."></textarea>
+        <p class="row" style="margin-top:12px"><button class="btn" id="bcSend" type="button">Send to all parents</button><button class="btn alt" id="bcCancel" type="button">Cancel</button></p>
+      </div>
+    </div>
   </div>
-  <div class="card">
-    <strong>Parent access</strong>
-    <label class="chk"><input type="checkbox" id="parentEditChk"> Let parents edit their contact details (mobile number and alternate contact)</label>
-    <label class="chk"><input type="checkbox" id="parentReqChk"> Let parents send change requests (for names, sections and other details)</label>
-    <p class="note">Parents can never change names, sections, cards or the email list themselves. Their requests appear at the top of the Children tab for you to review.</p>
+
+  <div class="mpanel" id="mp-acc" hidden>
+    <div class="card">
+      <strong>Parent access</strong>
+      <label class="chk"><input type="checkbox" id="parentEditChk"> Let parents edit their contact details (mobile number and alternate contact)</label>
+      <label class="chk"><input type="checkbox" id="parentReqChk"> Let parents send change requests (for names, sections and other details)</label>
+      <p class="note">Parents can never change names, sections, cards or the email list themselves. Their requests appear at the top of the Children tab for you to review.</p>
+    </div>
   </div>
-  <div class="card">
-    <strong>Add a grade and section</strong>
-    <label for="mGrade">Grade (e.g. Grade 3)</label><input id="mGrade" autocomplete="off">
-    <label for="mSec">Section (e.g. Rizal)</label><input id="mSec" autocomplete="off">
-    <p><button class="btn" id="addSec">Add</button></p>
+
+  <div class="mpanel" id="mp-sec" hidden>
+    <div class="card">
+      <strong>Add a grade and section</strong>
+      <label for="mGrade">Grade (e.g. Grade 3)</label><input id="mGrade" autocomplete="off">
+      <label for="mSec">Section (e.g. Rizal)</label><input id="mSec" autocomplete="off">
+      <p><button class="btn" id="addSec">Add</button></p>
+    </div>
+    <div id="secList"></div>
   </div>
-  <div id="secList"></div>
 </section>
 
 <section id="tab-staff">
@@ -739,8 +759,16 @@ $('addStaff').onclick=async()=>{
   }catch(e){toast(e.code==='auth/email-already-in-use'?'That email already has an account. Use a different email.':'Could not add staff ('+(e.code||e.message)+').')}
   finally{try{await signOut(auth2)}catch(x){}}};
 
+// --- Manage tab: switch between Announcements / Parent access / Grades & sections
+document.querySelectorAll('[data-mp]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('[data-mp]').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
+  document.querySelectorAll('.mpanel').forEach(p=>p.hidden=p.id!=='mp-'+b.dataset.mp)});
 // --- broadcast to all parents (admins only)
 let bcList=[];
+function openBc(){$('bcModal').hidden=false;document.body.classList.add('modal-open');$('bcModal').firstElementChild.scrollTop=0;setTimeout(()=>$('bcTitle').focus(),50)}
+function closeBc(){$('bcModal').hidden=true;document.body.classList.remove('modal-open')}
+$('openBc').onclick=openBc;$('bcCancel').onclick=closeBc;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('bcModal').hidden)closeBc()});
 function renderBc(){
   $('bcList').innerHTML=bcList.length?'<strong>Recent broadcasts</strong>'+bcList.map(b=>`<div class="card"><div class="row"><strong>${esc(b.title||'School announcement')}</strong><span class="note">${new Date(b.time).toLocaleString('en-PH',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</span></div><p style="white-space:pre-wrap;margin:6px 0">${esc(b.body)}</p><button class="btn alt sm" data-bd="${b.id}">Delete</button></div>`).join(''):'';
   document.querySelectorAll('[data-bd]').forEach(b=>b.onclick=()=>{if(confirm('Delete this broadcast? Parents will no longer see it.'))deleteDoc(doc(db,'broadcasts',b.dataset.bd)).catch(()=>toast('Could not delete.'))})}
@@ -750,7 +778,7 @@ $('bcSend').onclick=async()=>{
   if(!confirm('Send this to ALL parents now?\n\n'+title+'\n'+body))return;
   $('bcSend').disabled=true;
   try{await addDoc(collection(db,'broadcasts'),{title,body,time:Date.now(),by:auth.currentUser.uid,byEmail:auth.currentUser.email||''});
-    $('bcTitle').value='';$('bcBody').value='';toast('Sent to all parents.')}
+    $('bcTitle').value='';$('bcBody').value='';closeBc();toast('Sent to all parents.')}
   catch(e){toast('Could not send ('+(e.code||'error')+').')}
   finally{$('bcSend').disabled=false}};
 
