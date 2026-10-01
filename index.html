@@ -53,6 +53,7 @@ input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1.5px so
 .secgrid>.card{background:var(--bg)}
 @media screen and (min-width:700px){.secgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;align-items:start}.secgrid>.card{margin-bottom:0}.secgrid{padding-bottom:14px}}
 @media (prefers-reduced-motion:reduce){.gbox>summary::after{transition:none}}
+.role-head #adjBox{display:none}
 .ihd{font-weight:600;color:var(--mute);margin:12px 2px 6px}
 .nbadge{display:inline-block;min-width:1.5em;margin-left:5px;padding:0 6px;border-radius:99px;background:var(--bad);color:#fff;font-size:.75rem;line-height:1.5}
 .note{font-size:.88rem;color:var(--mute)}
@@ -484,7 +485,7 @@ button{cursor:pointer}
     <div class="frm"><div><label for="sEmail">Email</label><input id="sEmail" type="email" autocomplete="off"></div></div>
     <div class="frm c2"><div><label for="sPhone">Contact number</label><input id="sPhone" inputmode="tel" placeholder="09xx xxx xxxx" autocomplete="off"></div>
       <div><label for="sGender">Gender</label><select id="sGender"><option value="">Select...</option><option value="M">Male</option><option value="F">Female</option></select></div></div>
-    <div class="frm"><div><label for="sRole">Role</label><select id="sRole"><option value="adviser">Teacher / Class adviser (sees only assigned sections)</option><option value="gate">Gate staff (taps only)</option><option value="admin">Admin (full control of the app)</option></select></div></div>
+    <div class="frm"><div><label for="sRole">Role</label><select id="sRole"><option value="adviser">Teacher / Class adviser (sees only assigned sections)</option><option value="gate">Gate staff (taps only)</option><option value="head">School head (views all sections, cannot change anything)</option><option value="admin">Admin (full control of the app)</option></select></div></div>
     <div class="frm c2" id="sAdvWrap"><div><label for="sGrade">Advisory grade</label><select id="sGrade"></select></div>
       <div><label for="sSecName">Advisory section</label><select id="sSecName"></select></div></div>
     <div class="frm"><div><label for="sPw">Temporary password (at least 6 characters)</label><input id="sPw" type="text" autocomplete="off"></div></div>
@@ -574,9 +575,10 @@ onAuthStateChanged(auth,async user=>{
     if(!ok){$('loginMsg').textContent='This account is not a staff account. Check the staff document in Firestore: its Document ID must be the User UID of this account.';signOut(auth);return}$('loginMsg').textContent=''}
   $('login').hidden=!!user;$('app').hidden=!user;$('nav').hidden=!user;$('outBtn').hidden=!user;$('pwBtn').hidden=!user;if(!user)$('pwCard').hidden=true;$('navStaff').hidden=!admin;$('navManage').hidden=!admin;
   if(!user)return;
-  const vis={tap:myRole!=='adviser',kids:myRole==='admin'||myRole==='staff',log:true,inside:true,sf2:myRole!=='gate',school:myRole!=='gate'};
+  const vis={tap:myRole!=='adviser'&&myRole!=='head',kids:myRole==='admin'||myRole==='staff',log:true,inside:true,sf2:myRole!=='gate',school:myRole!=='gate'};
   Object.entries(vis).forEach(([t,v])=>document.querySelector('nav [data-tab='+t+']').hidden=!v);
-  showTab(myRole==='adviser'?'sf2':'tap');
+  document.body.classList.toggle('role-head',myRole==='head');
+  showTab(myRole==='adviser'?'sf2':myRole==='head'?'inside':'tap');
   unsub.push(onSnapshot(doc(db,'settings','school'),s=>applySchool(s.exists()?s.data():{},admin),()=>{}));
   unsub.push(onSnapshot(doc(db,'settings','sf2logos'),s=>applySfLogos(s.exists()?s.data():{},admin,s.exists()),()=>{}));
   unsub.push(onSnapshot(collection(db,'sections'),s=>{secList=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>cmp(a.name,b.name));render();if(myRole==='admin')renderStaff()},()=>toast('Could not load the sections.')));
@@ -622,6 +624,7 @@ function nextType(last,now){
   if(AT(last.type))return inLunch(now)?'lunch':'out';
   return 'in'}
 async function handleTap(uid){
+  if(myRole==='head')return;
   if(assigning){
     if(kids.some(x=>x.uid===uid&&x.id!==assigning)){toast('This card is already used by another child.');return}
     const k=kids.find(x=>x.id===assigning);assigning=null;
@@ -1198,7 +1201,7 @@ $('seSave').onclick=async()=>{
 // --- staff management (admins only)
 function renderStaff(){
   const me=auth.currentUser&&auth.currentUser.uid;
-  $('staffList').innerHTML=staffList.length?staffList.map(x=>`<div class="card"><div class="row"><div class="who">${av(x)}<div><strong>${esc(x.name||x.email||x.id)}</strong>${x.name?`<div class="note">${esc(x.email||'')}</div>`:''}${x.phone||x.gender?`<div class="note">${[x.gender==='M'?'Male':x.gender==='F'?'Female':'',x.phone].filter(Boolean).map(esc).join(' | ')}</div>`:''}</div></div><span class="tag ${x.role==='admin'?'ok':''}">${({admin:'Admin',adviser:'Adviser',gate:'Gate staff'})[x.role]||'Staff'}</span></div>
+  $('staffList').innerHTML=staffList.length?staffList.map(x=>`<div class="card"><div class="row"><div class="who">${av(x)}<div><strong>${esc(x.name||x.email||x.id)}</strong>${x.name?`<div class="note">${esc(x.email||'')}</div>`:''}${x.phone||x.gender?`<div class="note">${[x.gender==='M'?'Male':x.gender==='F'?'Female':'',x.phone].filter(Boolean).map(esc).join(' | ')}</div>`:''}</div></div><span class="tag ${x.role==='admin'?'ok':''}">${({admin:'Admin',adviser:'Adviser',gate:'Gate staff',head:'School head'})[x.role]||'Staff'}</span></div>
    ${x.role==='adviser'?secBoxes(x):''}<div class="row" style="margin-top:8px"><span><button class="btn alt sm" data-se="${x.id}">Edit</button> ${x.email?`<button class="btn alt sm" data-r="${esc(x.email)}">Send password reset</button>`:''}</span>${x.id===me?'<span class="note">You</span>':`<button class="btn alt sm" data-x="${x.id}">Remove</button>`}</div></div>`).join(''):'<p class="note">No staff yet.</p>';
   document.querySelectorAll('[data-sc]').forEach(c=>c.onchange=()=>{const id=c.dataset.sc,v=[...document.querySelectorAll('[data-sc="'+id+'"]:checked')].map(z=>z.value);updateDoc(doc(db,'staff',id),{sections:v}).then(()=>toast('Sections saved'),()=>toast('Could not save.'))});
   document.querySelectorAll('[data-se]').forEach(b=>b.onclick=()=>openStEdit(b.dataset.se));
