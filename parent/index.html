@@ -11,8 +11,8 @@
 <title>Tap-In Parents</title>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#eef4f6;--card:#fff;--ink:#16323a;--mute:#3f5a63;--line:#d5e3e7;--field:#9fbcc4;--acc:#0f7c8c;--acc-ink:#fff;--sun:#f2b233;--ok:#1f8f5f;--bad:#c2410c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root{--bg:#0f1e23;--card:#172a30;--ink:#e6f1f3;--mute:#8fb0b8;--line:#28434b;--field:#28434b;--acc:#3cb6c6;--acc-ink:#062026;--ok:#4cc790;--bad:#f08a5d}}
+:root{--bg:#eef4f6;--card:#fff;--ink:#16323a;--mute:#3f5a63;--line:#d5e3e7;--field:#9fbcc4;--acc:#0f7c8c;--acc-ink:#fff;--sun:#f2b233;--ok:#1f8f5f;--bad:#c2410c;--t-green:#17784d;--t-red:#c62828;--t-blue:#1e56b8;--t-amber:#9a5b00;--t-ink:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1e23;--card:#172a30;--ink:#e6f1f3;--mute:#8fb0b8;--line:#28434b;--field:#28434b;--acc:#3cb6c6;--acc-ink:#062026;--ok:#4cc790;--bad:#f08a5d;--t-green:#4cc790;--t-red:#f27a7a;--t-blue:#6aa7ff;--t-amber:#f2b233;--t-ink:#062026}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Fredoka,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -36,7 +36,23 @@ input,textarea{width:100%;padding:12px 10px;min-height:48px;border-radius:10px;b
 .note{font-size:.95rem;color:var(--mute)}
 textarea{resize:vertical;min-height:84px}
 .ann{border-left:5px solid var(--line)}
-.ann.new{border-left-color:var(--sun);background:color-mix(in srgb,var(--sun) 12%,var(--card))}
+.who{display:flex;gap:10px;align-items:center;min-width:0}
+.pav{display:grid;place-items:center;width:52px;height:52px;border-radius:50%;object-fit:cover;background:var(--acc);color:var(--acc-ink);font-weight:600;flex:none}
+.tabs{display:flex;gap:8px;margin:0 0 14px}
+.tab{flex:1;min-width:0;min-height:52px;padding:8px 6px;border:2px solid var(--c);border-radius:14px;background:var(--card);color:var(--c);font:inherit;font-size:.95rem;font-weight:500;line-height:1.15;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--c);color:var(--t-ink)}
+.tab .nb{display:inline-block;min-width:1.5em;padding:0 6px;border-radius:99px;background:var(--c);color:var(--t-ink);font-size:.8rem;line-height:1.5}
+.tab[aria-selected="true"] .nb{background:var(--t-ink);color:var(--c)}
+.t-green{--c:var(--t-green)}.t-red{--c:var(--t-red)}.t-blue{--c:var(--t-blue)}
+.st{display:flex;gap:12px;align-items:center;padding:12px;border-radius:14px;margin:10px 0;background:color-mix(in srgb,var(--sc) 14%,var(--card))}
+.st .ic{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:var(--sc);color:var(--t-ink);flex:none}
+.st.ok{--sc:var(--t-green)}.st.lunch{--sc:var(--t-amber)}.st.home{--sc:var(--t-blue)}.st.none{--sc:var(--mute)}
+.mnav{margin:0 0 12px}
+.rr{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.rr:first-of-type{margin-top:8px}.rr span:nth-child(2){flex:1}.rr b{font-size:1.25rem}
+.ric{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;flex:none;background:var(--c);color:var(--t-ink)}
+.ric svg{width:18px;height:18px}.ric.g{--c:var(--t-green)}.ric.r{--c:var(--t-red)}.ric.a{--c:var(--t-amber)}.ric.b{--c:var(--t-blue)}
+.ann.new{border-left-color:var(--t-red);background:color-mix(in srgb,var(--t-red) 8%,var(--card))}
 .ann p{margin:6px 0 0;white-space:pre-wrap}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%;text-align:center}
 #toast.on{opacity:1}
@@ -71,14 +87,21 @@ textarea{resize:vertical;min-height:84px}
 </div>
 
 <div id="app" hidden>
-  <div id="ann"></div>
-  <div class="card" id="alertBox" hidden>
-    <strong>School alerts</strong>
-    <p class="note">Get a phone notification when the school posts a notice while this app is open or running in the background.</p>
-    <button class="btn sm" id="alertBtn">Turn on alerts</button>
+  <div class="tabs" role="tablist" aria-label="Sections">
+    <button type="button" class="tab t-green" role="tab" aria-selected="true" data-tab="att">Attendance</button>
+    <button type="button" class="tab t-red" role="tab" aria-selected="false" data-tab="ann">Alerts <span class="nb" id="annBadge" hidden></span></button>
+    <button type="button" class="tab t-blue" role="tab" aria-selected="false" data-tab="rep">Monthly report</button>
   </div>
-  <div id="kids"></div>
-  <div id="contacts"></div>
+  <section id="tab-att"><div id="kids"></div><div id="contacts"></div></section>
+  <section id="tab-ann" hidden>
+    <div class="card" id="alertBox" hidden>
+      <strong>School alerts</strong>
+      <p class="note">Get a phone notification when the school posts a notice while this app is open or running in the background.</p>
+      <button class="btn sm" id="alertBtn">Turn on alerts</button>
+    </div>
+    <div id="ann"></div>
+  </section>
+  <section id="tab-rep" hidden><div id="report"></div></section>
   <div class="card" id="installBox" hidden>
     <strong>Install the app</strong>
     <p class="note" id="installNote">Add it to your Home Screen for one-tap access.</p>
@@ -114,6 +137,7 @@ $('installBtn').onclick=async()=>{if(!deferred)return;deferred.prompt();await de
 const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
 if(!standalone&&/iphone|ipad/i.test(navigator.userAgent)){$('installBox').hidden=false;$('installNote').textContent='In Safari, tap Share, then "Add to Home Screen".'}
 
+let allLogs=null,lateAfter='07:30',repY=new Date().getFullYear(),repM=new Date().getMonth();
 let signup=false,unsub=null,unsubB=null,unsubC=[];
 $('swapBtn').onclick=()=>{signup=!signup;$('fpBtn').hidden=signup;$('loginTitle').textContent=signup?'Create an account':'Log in';$('goBtn').textContent=signup?'Sign up':'Log in';$('swapBtn').textContent=signup?'Have an account? Log in':'No account yet? Sign up'};
 $('goBtn').onclick=async()=>{
@@ -146,6 +170,7 @@ onAuthStateChanged(auth,user=>{
   if(unsub){unsub();unsub=null}
   if(unsubB){unsubB();unsubB=null}
   annMax=0;annReady=false;$('ann').innerHTML='';
+  allLogs=null;$('kids').innerHTML='';$('report').innerHTML='';$('annBadge').hidden=true;{const n=new Date();repY=n.getFullYear();repM=n.getMonth()}setTab('att');
   unsubC.forEach(u=>u());unsubC=[];myKids=[];myReqs=[];open={};$('contacts').innerHTML='';
   $('who').textContent='';
   $('outBtn').hidden=!user;$('pwBtn').hidden=!(user&&user.emailVerified);if(!user)$('pwCard').hidden=true;$('login').hidden=!!user;$('verify').hidden=true;$('app').hidden=true;
@@ -154,22 +179,22 @@ onAuthStateChanged(auth,user=>{
   start(user)});
 
 // School logo, name and year come from the shared school record; the last copy is kept so it shows right away next time.
-function showBrand(d){const n=(d.schoolName||'').trim(),y=(d.schoolYear||'').trim(),l=d.schoolLogo||'',t=[n,y&&('SY '+y)].filter(Boolean).join(' \u00b7 ');
+function showBrand(d){if(d.lateAfter)lateAfter=d.lateAfter;const n=(d.schoolName||'').trim(),y=(d.schoolYear||'').trim(),l=d.schoolLogo||'',t=[n,y&&('SY '+y)].filter(Boolean).join(' \u00b7 ');
   const im=$('schLogo');im.hidden=!l;if(l)im.src=l;$('schName').textContent=t;$('schName').hidden=!t;
-  try{localStorage.setItem('tapin-brand',JSON.stringify({schoolName:n,schoolYear:y,schoolLogo:l}))}catch(e){}}
+  try{localStorage.setItem('tapin-brand',JSON.stringify({schoolName:n,schoolYear:y,schoolLogo:l,lateAfter}))}catch(e){}}
 try{const b=JSON.parse(localStorage.getItem('tapin-brand')||'null');if(b)showBrand(b)}catch(e){}
 function start(user){$('pwBtn').hidden=false;
   $('who').textContent='Signed in as '+user.email;
   $('verify').hidden=true;$('app').hidden=false;
   unsub=onSnapshot(query(collection(db,'log'),where('parentEmails','array-contains',user.email.toLowerCase())),
-    s=>render(s.docs.map(d=>d.data())),
+    s=>{allLogs=s.docs.map(d=>d.data());render(allLogs);renderReport()},
     err=>toast('Could not load the records ('+(err.code||'error')+').'));
   unsubB=onSnapshot(query(collection(db,'broadcasts'),orderBy('time','desc'),limit(10)),
     s=>renderAnn(s.docs.map(d=>({id:d.id,...d.data()}))),()=>{});
   const em=user.email.toLowerCase();
   unsubC=[
-    onSnapshot(query(collection(db,'kids'),where('parentEmails','array-contains',em)),s=>{myKids=s.docs.map(d=>({id:d.id,...d.data()}));renderContacts()},()=>{}),
-    onSnapshot(doc(db,'settings','school'),s=>{const d=s.exists()?s.data():{};parentEdit=!!d.parentEdit;parentReq=!!d.parentRequests;showBrand(d);renderContacts()},()=>{parentEdit=false;parentReq=false;renderContacts()}),
+    onSnapshot(query(collection(db,'kids'),where('parentEmails','array-contains',em)),s=>{myKids=s.docs.map(d=>({id:d.id,...d.data()}));renderContacts();if(allLogs)render(allLogs);renderReport()},()=>{}),
+    onSnapshot(doc(db,'settings','school'),s=>{const d=s.exists()?s.data():{};parentEdit=!!d.parentEdit;parentReq=!!d.parentRequests;showBrand(d);renderContacts();renderReport()},()=>{parentEdit=false;parentReq=false;renderContacts()}),
     onSnapshot(query(collection(db,'changeRequests'),where('parentEmail','==',em)),s=>{myReqs=s.docs.map(d=>({id:d.id,...d.data()}));renderContacts()},()=>{})];
   setAlertBox()}
 
@@ -191,27 +216,54 @@ function renderAnn(items){
   if(annReady&&newest>annMax&&getSeen()<newest)items.filter(b=>b.time>annMax).forEach(notify);
   annMax=Math.max(annMax,newest);annReady=true;
   const seen=getSeen(),cut=Date.now()-14*864e5,shown=items.filter(b=>b.time>=cut);
-  if(!shown.length){$('ann').innerHTML='';return}
-  const unread=shown.some(b=>b.time>seen);
+  if(!shown.length){$('annBadge').hidden=true;$('ann').innerHTML='<div class="card"><strong>No announcements</strong><p class="note">Notices from the school in the last 14 days appear here.</p></div>';return}
+  const unread=shown.some(b=>b.time>seen),nUn=shown.filter(b=>b.time>seen).length;$('annBadge').hidden=!nUn;$('annBadge').textContent=nUn;
   $('ann').innerHTML='<div class="row"><strong>From the school</strong>'+(unread?'<button class="btn alt sm" id="annRead">Mark as read</button>':'')+'</div>'
     +shown.map(b=>`<div class="card ann ${b.time>seen?'new':''}"><div class="row"><span class="big">${esc(b.title||'School announcement')}</span>${b.time>seen?'<span class="pill in">New</span>':''}</div><div class="note">${esc(fdt(b.time))}</div><p>${esc(b.body)}</p></div>`).join('');
   const rb=$('annRead');if(rb)rb.onclick=()=>{setSeen(newest);renderAnn(annItems)}}
+
+const ICON={check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',cal:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',home:'<path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/>',dash:'<path d="M7 12h10"/>'};
+const ic=n=>`<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
+const avt=(k,name)=>{const p=k&&k.photo;if(p)return `<img class="pav" src="${esc(p)}" alt="">`;
+  return `<span class="pav" aria-hidden="true">${esc(String(name||'?').split(/[\s,]+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase())}</span>`};
+function setTab(t){document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
+  ['att','ann','rep'].forEach(x=>$('tab-'+x).hidden=x!==t)}
+document.querySelector('.tabs').onclick=e=>{const b=e.target.closest('[data-tab]');if(b){setTab(b.dataset.tab);window.scrollTo(0,0)}};
 
 function render(logs){
   const by={};
   logs.forEach(l=>(by[l.kidId]=by[l.kidId]||[]).push(l));
   const ids=Object.keys(by);
   if(!ids.length){$('kids').innerHTML='<div class="card"><strong>No records yet</strong><p class="note">No records were found for the email shown above. Records appear here once your child taps at school. If they already attend, ask the school to check that this is the email they have on file.</p></div>';return}
-  const cut=Date.now()-30*864e5;
+  const cut=Date.now()-30*864e5,T={in:['ok','check','Checked in to school'],back:['ok','check','Back from lunch'],lunch:['lunch','clock','Out for lunch'],out:['home','home','Went home']};
   $('kids').innerHTML=ids.map(id=>{
-    const a=by[id].sort((x,y)=>y.time-x.time),l=a[0],today=dk(l.time)===dk(Date.now());
-    const AT=t=>t==='in'||t==='back',st=!today?'No tap yet today':AT(l.type)?'At school':l.type==='lunch'?'Out for lunch':'Went home';
+    const a=by[id].sort((x,y)=>y.time-x.time),l=a[0],today=dk(l.time)===dk(Date.now()),k=myKids.find(x=>x.id===id)||{},AT=t=>t==='in'||t==='back';
+    const s=today?(T[l.type]||T.out):['none','dash','No tap yet today'],sub=today?'Today at '+tm(l.time):'Last tap: '+fdt(l.time);
     let days='',cur='';
     a.filter(x=>x.time>=cut).forEach(x=>{
       const d=new Date(x.time).toLocaleDateString('en-PH',{weekday:'short',month:'short',day:'numeric'});
       if(d!==cur){cur=d;days+=`<div class="day">${esc(d)}</div>`}
       days+=`<div class="row"><span>${({in:'Arrived',out:'Left',lunch:'Out for lunch',back:'Back from lunch'})[x.type]||'Left'}</span><span class="pill ${AT(x.type)?'in':''}">${tm(x.time)}</span></div>`});
-    return `<div class="card"><div class="row"><span class="big">${esc(l.name)}</span><span class="pill ${today&&AT(l.type)?'in':''}">${st}</span></div>${days}</div>`}).join('')}
+    return `<div class="card"><div class="row"><div class="who">${avt(k,l.name)}<span class="big">${esc(l.name)}</span></div>${k.section?`<span class="pill">${esc(k.section)}</span>`:''}</div><div class="st ${s[0]}"><span class="ic">${ic(s[1])}</span><div><strong>${s[2]}</strong><div class="note">${esc(sub)}</div></div></div>${days}</div>`}).join('')}
+
+function renderReport(){
+  const el=$('report');if(!allLogs){el.innerHTML='';return}
+  const ids=[...new Set([...myKids.map(k=>k.id),...allLogs.map(l=>l.kidId)])];
+  if(!ids.length){el.innerHTML='<div class="card"><strong>No records yet</strong><p class="note">The monthly report appears once your child taps at school.</p></div>';return}
+  const now=new Date(),isCur=repY===now.getFullYear()&&repM===now.getMonth(),[ch,cm]=String(lateAfter||'07:30').split(':').map(Number),
+    label=new Date(repY,repM,1).toLocaleDateString('en-PH',{month:'long',year:'numeric'}),
+    nav=`<div class="row mnav"><button type="button" class="btn alt sm" data-m="-1" aria-label="Previous month">&lsaquo; Prev</button><strong>${esc(label)}</strong><button type="button" class="btn alt sm" data-m="1" style="${isCur?'visibility:hidden':''}" aria-label="Next month">Next &rsaquo;</button></div>`,
+    R=(c,i,t,v)=>`<div class="rr"><span class="ric ${c}">${ic(i)}</span><span>${t}</span><b>${v}</b></div>`;
+  const t0=new Date();t0.setHours(0,0,0,0);
+  const cards=ids.map(id=>{
+    const k=myKids.find(x=>x.id===id)||{},lg=allLogs.filter(l=>l.kidId===id),name=k.name||(lg[0]&&lg[0].name)||'Child',first={};
+    lg.forEach(l=>{const d=new Date(l.time);if(d.getFullYear()!==repY||d.getMonth()!==repM)return;const g=d.getDate();if(!(g in first)||l.time<first[g])first[g]=l.time});
+    let present=0,tardy=0,wk=0,miss=0;
+    Object.values(first).forEach(t=>{present++;const d=new Date(t);if(d.getHours()*60+d.getMinutes()>ch*60+cm)tardy++});
+    for(let d=1,n=new Date(repY,repM+1,0).getDate();d<=n;d++){const dt=new Date(repY,repM,d);if(dt>t0)break;const w=dt.getDay();if(w>0&&w<6){wk++;if(!(d in first))miss++}}
+    return `<div class="card"><div class="row"><div class="who">${avt(k,name)}<span class="big">${esc(name)}</span></div>${k.section?`<span class="pill">${esc(k.section)}</span>`:''}</div>${R('g','check','Days present',present)}${R('r','x','Weekdays without a tap',miss)}${R('a','clock','Tardy',tardy)}${R('b','cal',isCur?'Weekdays so far':'Weekdays',wk)}</div>`}).join('');
+  el.innerHTML=nav+cards+`<p class="note">Based on your child's taps at school. Holidays and class suspensions count as weekdays here, so the school's official SF2 record may differ.</p>`}
+$('report').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;const d=new Date(repY,repM+ +b.dataset.m,1);repY=d.getFullYear();repM=d.getMonth();renderReport()};
 
 // --- contact details and change requests
 let myKids=[],myReqs=[],parentEdit=false,parentReq=false,open={};
