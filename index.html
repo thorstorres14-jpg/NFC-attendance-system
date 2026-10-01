@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="theme-color" content="#0a1d2c">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Tap-In Attendance</title>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#eef4f6;--card:#fff;--ink:#16323a;--mute:#3f5a63;--line:#d5e3e7;--field:#9fbcc4;--acc:#0f7c8c;--acc-ink:#fff;--sun:#f2b233;--ok:#1f8f5f;--bad:#c2410c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root{--bg:#0f1e23;--card:#172a30;--ink:#e6f1f3;--mute:#8fb0b8;--line:#28434b;--field:#28434b;--acc:#3cb6c6;--acc-ink:#062026;--ok:#4cc790;--bad:#f08a5d}}
+:root{--bg:#eef4f6;--card:#fff;--ink:#16323a;--mute:#3f5a63;--line:#d5e3e7;--field:#9fbcc4;--acc:#f2b233;--acc-ink:#2a1d00;--sun:#f2b233;--focus:#0b5f8a;--link:#0b5f8a;--ok:#1f8f5f;--bad:#c2410c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#0a1d2c;--card:#112e40;--ink:#e8f1f5;--mute:#9bbac6;--line:#27495d;--field:#2f566b;--acc:#f2b233;--acc-ink:#2a1d00;--focus:#8fd8ee;--link:#7fd0e6;--ok:#4cc790;--bad:#f08a5d}}
+@media (prefers-color-scheme:dark){body{background-image:radial-gradient(110% 50% at 50% 0%,#14465e 0%,rgba(20,70,94,0) 65%);background-repeat:no-repeat;background-attachment:fixed}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Fredoka,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -17,7 +19,7 @@ h1{font-size:1.5rem;margin:8px 0 2px;font-weight:600}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:6px;justify-content:center;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line)}
 nav button{flex:1;max-width:170px;padding:10px 4px;border:0;border-radius:12px;background:transparent;color:var(--mute);font:inherit;font-size:.85rem;font-weight:500}
 nav button[aria-selected="true"]{background:var(--acc);color:var(--acc-ink)}
-button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 section{display:none}section.on{display:block}
 .zone{display:grid;place-items:center;text-align:center;min-height:250px;padding:24px;border-radius:28px;background:var(--card);border:2px dashed var(--line);margin-bottom:14px}
 .zone.live{border-color:var(--acc)}
@@ -48,7 +50,7 @@ input[type="time"]::-webkit-datetime-edit,input[type="date"]::-webkit-datetime-e
 .gbox{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:12px}
 .gbox>summary{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px;cursor:pointer;list-style:none;border-radius:16px}
 .gbox>summary::-webkit-details-marker{display:none}
-.gbox>summary:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+.gbox>summary:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 .gbox>summary::after{content:"";flex:none;width:9px;height:9px;margin:0 4px 3px 8px;border-right:2px solid var(--mute);border-bottom:2px solid var(--mute);transform:rotate(45deg);transition:transform .15s}
 .gbox[open]>summary::after{transform:rotate(-135deg);margin-bottom:-3px}
 .gbox>summary>div{flex:1;min-width:0}
@@ -235,8 +237,8 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
 .schprev{display:inline-grid;place-items:center;min-width:56px;height:56px}
 .schprev img{width:56px;height:56px;object-fit:contain;border-radius:8px;background:#fff;padding:3px}
 /* ---------- Tap tab: school header, live 12-hour clock, scanner polish ---------- */
-.hero{--hero:#0d4d58;grid-column:1/-1;display:grid;gap:18px 28px;align-items:center;padding:20px 20px 24px;margin-bottom:14px;border-radius:24px;background:var(--hero);color:#fff;position:relative;overflow:hidden}
-@media (prefers-color-scheme:dark){.hero{--hero:#133840;border:1px solid var(--line)}}
+.hero{--hero:#0e3b52;grid-column:1/-1;display:grid;gap:18px 28px;align-items:center;padding:20px 20px 24px;margin-bottom:14px;border-radius:24px;background:var(--hero);color:#fff;position:relative;overflow:hidden}
+@media (prefers-color-scheme:dark){.hero{--hero:#0f3a4f;border:1px solid var(--line)}}
 .hero-brand{display:flex;gap:16px;align-items:center;min-width:0}
 .hero-logo{width:76px;height:76px;flex:none;object-fit:cover;padding:0;border-radius:50%;background:transparent;box-shadow:0 0 0 4px rgba(255,255,255,.2)}
 .hero-txt{min-width:0}
@@ -300,7 +302,7 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
 .kd-name{margin:0 0 8px;font-size:1.35rem;font-weight:600;line-height:1.2;overflow-wrap:anywhere}
 .kd-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .kd-dl{display:grid;grid-template-columns:minmax(0,8.5em) minmax(0,1fr);gap:10px 12px;margin:0 0 18px}
-.kd-dl dt{color:var(--mute);font-size:.9rem}.kd-dl dd{margin:0;overflow-wrap:anywhere}.kd-dl a{color:var(--acc)}
+.kd-dl dt{color:var(--mute);font-size:.9rem}.kd-dl dd{margin:0;overflow-wrap:anywhere}.kd-dl a{color:var(--link)}
 @media screen and (max-width:520px){.kd-dl{grid-template-columns:minmax(0,1fr);gap:2px}.kd-dl dd{margin-bottom:10px}}
 .kd-act{display:flex;gap:8px;flex-wrap:wrap}
 .kd-del{margin-left:auto;color:var(--bad)}
