@@ -19,19 +19,20 @@ body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Fredoka,system
 main{max-width:520px;margin:0 auto;padding:16px}
 h1{font-size:1.5rem;margin:8px 0 2px;font-weight:600}
 .sub{color:var(--mute);margin:0 0 16px}
-button:focus-visible,input:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 .btn{display:inline-block;padding:11px 18px;border:0;border-radius:12px;background:var(--acc);color:var(--acc-ink);font:inherit;font-weight:500;cursor:pointer}
 .btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
 .btn.sm{padding:6px 12px;font-size:.9rem}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
 .row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 label{display:block;font-size:.9rem;color:var(--mute);margin:8px 0 2px}
-input{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
+input,textarea{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
 .big{font-size:1.15rem;font-weight:600}
 .pill{font-size:.85rem;padding:3px 10px;border-radius:99px;background:var(--bg);color:var(--mute)}
 .pill.in{color:var(--ok)}
 .day{margin:12px 0 4px;font-weight:500;color:var(--mute);font-size:.9rem}
 .note{font-size:.88rem;color:var(--mute)}
+textarea{resize:vertical;min-height:84px}
 .ann{border-left:5px solid var(--line)}
 .ann.new{border-left-color:var(--sun);background:color-mix(in srgb,var(--sun) 12%,var(--card))}
 .ann p{margin:6px 0 0;white-space:pre-wrap}
@@ -75,6 +76,7 @@ input{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);
     <button class="btn sm" id="alertBtn">Turn on alerts</button>
   </div>
   <div id="kids"></div>
+  <div id="contacts"></div>
   <div class="card" id="installBox" hidden>
     <strong>Install the app</strong>
     <p class="note" id="installNote">Add it to your Home Screen for one-tap access.</p>
@@ -87,7 +89,7 @@ input{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signOut,updatePassword,reauthenticateWithCredential,EmailAuthProvider} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {getFirestore,collection,query,where,orderBy,limit,onSnapshot} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getFirestore,collection,query,where,orderBy,limit,onSnapshot,doc,updateDoc,addDoc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig={
   apiKey:"AIzaSyCSkppOFLolbgMJe53otK37PYUpUcIXvks",
@@ -110,7 +112,7 @@ $('installBtn').onclick=async()=>{if(!deferred)return;deferred.prompt();await de
 const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
 if(!standalone&&/iphone|ipad/i.test(navigator.userAgent)){$('installBox').hidden=false;$('installNote').textContent='In Safari, tap Share, then "Add to Home Screen".'}
 
-let signup=false,unsub=null,unsubB=null;
+let signup=false,unsub=null,unsubB=null,unsubC=[];
 $('swapBtn').onclick=()=>{signup=!signup;$('fpBtn').hidden=signup;$('loginTitle').textContent=signup?'Create an account':'Log in';$('goBtn').textContent=signup?'Sign up':'Log in';$('swapBtn').textContent=signup?'Have an account? Log in':'No account yet? Sign up'};
 $('goBtn').onclick=async()=>{
   const e=$('em').value.trim().toLowerCase(),p=$('pw').value;
@@ -142,6 +144,7 @@ onAuthStateChanged(auth,user=>{
   if(unsub){unsub();unsub=null}
   if(unsubB){unsubB();unsubB=null}
   annMax=0;annReady=false;$('ann').innerHTML='';
+  unsubC.forEach(u=>u());unsubC=[];myKids=[];myReqs=[];open={};$('contacts').innerHTML='';
   $('who').textContent='';
   $('outBtn').hidden=!user;$('pwBtn').hidden=!(user&&user.emailVerified);if(!user)$('pwCard').hidden=true;$('login').hidden=!!user;$('verify').hidden=true;$('app').hidden=true;
   if(!user)return;
@@ -156,6 +159,11 @@ function start(user){$('pwBtn').hidden=false;
     err=>toast('Could not load the records ('+(err.code||'error')+').'));
   unsubB=onSnapshot(query(collection(db,'broadcasts'),orderBy('time','desc'),limit(10)),
     s=>renderAnn(s.docs.map(d=>({id:d.id,...d.data()}))),()=>{});
+  const em=user.email.toLowerCase();
+  unsubC=[
+    onSnapshot(query(collection(db,'kids'),where('parentEmails','array-contains',em)),s=>{myKids=s.docs.map(d=>({id:d.id,...d.data()}));renderContacts()},()=>{}),
+    onSnapshot(doc(db,'settings','school'),s=>{parentEdit=!!(s.exists()&&s.data().parentEdit);renderContacts()},()=>{parentEdit=false;renderContacts()}),
+    onSnapshot(query(collection(db,'changeRequests'),where('parentEmail','==',em)),s=>{myReqs=s.docs.map(d=>({id:d.id,...d.data()}));renderContacts()},()=>{})];
   setAlertBox()}
 
 // --- school announcements (broadcasts)
@@ -197,6 +205,54 @@ function render(logs){
       if(d!==cur){cur=d;days+=`<div class="day">${esc(d)}</div>`}
       days+=`<div class="row"><span>${x.type==='in'?'Arrived':'Left'}</span><span class="pill ${x.type==='in'?'in':''}">${tm(x.time)}</span></div>`});
     return `<div class="card"><div class="row"><span class="big">${esc(l.name)}</span><span class="pill ${today&&l.type==='in'?'in':''}">${st}</span></div>${days}</div>`}).join('')}
+
+// --- contact details and change requests
+let myKids=[],myReqs=[],parentEdit=false,open={};
+const reqTxt={pending:'Waiting for the school',done:'Done',declined:'Declined'};
+const okPhone=v=>/^[0-9+\-() ]{7,30}$/.test(v)&&v.replace(/\D/g,'').length>=7;
+function renderContacts(){if(Object.keys(open).length)return;drawContacts()}
+function drawContacts(){
+  const el=$('contacts');
+  if(!myKids.length){el.innerHTML='';return}
+  const list=[...myKids].sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+  el.innerHTML='<div class="day">Contact details on file</div>'+list.map(k=>{
+    const o=open[k.id],alt=[k.altName,k.altPhone].filter(Boolean).join(' - ')||'Not set';
+    const reqs=myReqs.filter(r=>r.kidId===k.id).sort((a,b)=>b.time-a.time).slice(0,3);
+    let body;
+    if(o==='edit')body=`<label>Mobile number<input data-f="phone" inputmode="tel" maxlength="30" value="${esc(k.phone||'')}"></label>
+      <label>Alternate contact name (optional)<input data-f="altName" maxlength="60" value="${esc(k.altName||'')}"></label>
+      <label>Alternate contact number (optional)<input data-f="altPhone" inputmode="tel" maxlength="30" value="${esc(k.altPhone||'')}"></label>
+      <p class="row"><button class="btn" data-act="save" data-id="${k.id}">Save</button><button class="btn alt sm" data-act="cancel" data-id="${k.id}">Cancel</button></p>`;
+    else if(o==='req')body=`<label>What needs to change?<textarea data-f="msg" maxlength="500" placeholder="For example: my child's name is misspelled, or we have a new email address."></textarea></label>
+      <p class="note">The school will review your request and update the record.</p>
+      <p class="row"><button class="btn" data-act="send" data-id="${k.id}">Send to the school</button><button class="btn alt sm" data-act="cancel" data-id="${k.id}">Cancel</button></p>`;
+    else body=`<div class="row"><span class="note">Mobile</span><span>${esc(k.phone||'Not set')}</span></div>
+      <div class="row"><span class="note">Alternate</span><span>${esc(alt)}</span></div>
+      <p class="row">${parentEdit?`<button class="btn alt sm" data-act="edit" data-id="${k.id}">Edit contact details</button>`:'<span></span>'}<button class="btn alt sm" data-act="req" data-id="${k.id}">Request a change</button></p>`
+      +reqs.map(r=>`<div class="note" style="margin-top:6px">${esc(fdt(r.time))}: ${esc(r.message.slice(0,80))}${r.message.length>80?'...':''} <span class="pill ${r.status==='done'?'in':''}">${esc(reqTxt[r.status]||r.status)}</span>${r.note?`<div>School: ${esc(r.note)}</div>`:''}</div>`).join('');
+    return `<div class="card"><div class="row"><span class="big">${esc(k.name)}</span>${k.section?`<span class="pill">${esc(k.section)}</span>`:''}</div>${body}</div>`}).join('')}
+$('contacts').onclick=async e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const id=b.dataset.id,act=b.dataset.act,k=myKids.find(x=>x.id===id);if(!k)return;
+  const card=b.closest('.card'),f=n=>{const x=card.querySelector('[data-f='+n+']');return x?x.value.trim():''};
+  if(act==='edit'||act==='req'){open={};open[id]=act;drawContacts();return}
+  if(act==='cancel'){open={};drawContacts();return}
+  if(act==='save'){
+    const phone=f('phone'),altName=f('altName'),altPhone=f('altPhone');
+    if(!okPhone(phone)){toast('Enter a valid mobile number.');return}
+    if(altPhone&&!okPhone(altPhone)){toast('Enter a valid alternate number, or leave it blank.');return}
+    b.disabled=true;
+    try{await updateDoc(doc(db,'kids',id),{phone,altName:altName.slice(0,60),altPhone,contactUpdatedAt:Date.now(),contactUpdatedBy:auth.currentUser.email});
+      open={};drawContacts();toast('Contact details saved.')}
+    catch(err){b.disabled=false;toast(err.code==='permission-denied'?'The school has turned off contact editing. Send a change request instead.':'Could not save. Please try again.')}
+    return}
+  if(act==='send'){
+    const msg=f('msg');
+    if(msg.length<5){toast('Please describe the change you need.');return}
+    b.disabled=true;
+    try{await addDoc(collection(db,'changeRequests'),{kidId:id,kidName:String(k.name||'').slice(0,120),section:String(k.section||'').slice(0,80),parentEmail:auth.currentUser.email,message:msg.slice(0,500),time:Date.now(),status:'pending'});
+      open={};drawContacts();toast('Sent to the school.')}
+    catch(err){b.disabled=false;toast('Could not send. Please try again.')}}};
 </script>
 </body>
 </html>
