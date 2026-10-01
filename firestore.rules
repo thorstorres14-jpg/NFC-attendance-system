@@ -30,13 +30,18 @@ service cloud.firestore {
         && request.auth.token.email in emails;
     }
 
-    // Staff list. Admins manage it from the app. Make the first admin by hand:
-    // set role = "admin" on your own document in the console.
+    // Staff list. Admins manage it from the app, including adding other admins.
+    // Make the very first admin by hand: set role = "admin" on your own document in the console.
     match /staff/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
-      allow create: if isAdmin() && request.resource.data.role in ['adviser', 'gate'];
-      allow update: if isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sections'])
-        && request.resource.data.sections is list;
+      allow create: if isAdmin() && request.resource.data.role in ['adviser', 'gate', 'admin'];
+      // Admins can change a staff member's section assignment and personal details (never email or role).
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sections', 'name', 'phone', 'gender'])
+        && request.resource.data.get('sections', []) is list
+        && request.resource.data.get('name', '') is string && request.resource.data.get('name', '').size() <= 120
+        && request.resource.data.get('phone', '') is string && request.resource.data.get('phone', '').size() <= 30
+        && request.resource.data.get('gender', '') in ['', 'M', 'F'];
       allow delete: if isAdmin() && request.auth.uid != uid;
     }
 
