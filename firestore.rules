@@ -2,13 +2,17 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function me() { return get(/databases/$(database)/documents/staff/$(request.auth.uid)).data; }
     function isStaff() {
       return request.auth != null
         && exists(/databases/$(database)/documents/staff/$(request.auth.uid));
     }
-    function isAdmin() {
-      return isStaff()
-        && get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.role == 'admin';
+    function isAdmin()  { return isStaff() && me().role == 'admin'; }
+    // admin and legacy 'staff' manage children; gate staff only tap; advisers only read their sections.
+    function canManage() { return isStaff() && me().role in ['admin', 'staff']; }
+    function canTap()    { return isStaff() && me().role in ['admin', 'staff', 'gate']; }
+    function myAdvised(sec) {
+      return isStaff() && me().role == 'adviser' && sec in me().get('sections', []);
     }
     function isParent(emails) {
       return request.auth != null
@@ -20,21 +24,47 @@ service cloud.firestore {
     // set role = "admin" on your own document in the console.
     match /staff/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
-      allow create: if isAdmin() && request.resource.data.role == 'staff';
-      allow update: if false;
+      allow create: if isAdmin() && request.resource.data.role in ['adviser', 'gate'];
+      allow update: if isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sections'])
+        && request.resource.data.sections is list;
       allow delete: if isAdmin() && request.auth.uid != uid;
     }
 
+    // Grades and sections. All staff can read; only admins add or remove.
+    match /sections/{id} {
+      allow read: if isStaff();
+      allow create, delete: if isAdmin();
+      allow update: if false;
+    }
+
     match /kids/{id} {
-      allow read: if isStaff() || isParent(resource.data.parentEmails);
-      allow write: if isStaff();
+      allow read: if canTap() || myAdvised(resource.data.get('section', '')) || isParent(resource.data.parentEmails);
+      allow write: if canManage();
     }
 
     match /log/{id} {
-      allow read: if isStaff() || isParent(resource.data.parentEmails);
-      allow create: if isStaff();
-      allow update: if isStaff()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parentEmails', 'name']);
+      allow read: if canTap() || myAdvised(resource.data.get('section', '')) || isParent(resource.data.parentEmails);
+      allow create: if canTap();
+      allow update: if canManage()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parentEmails', 'name', 'section']);
+      allow delete: if false;
+    }
+
+    // Attendance edits. Admin/staff can edit any section; advisers only their own.
+    // Never deleted, and the history list can only grow, so every change leaves a trace.
+    match /adjustments/{id} {
+      allow read: if canManage() || myAdvised(resource.data.get('section', ''));
+      allow create: if (canManage() || myAdvised(request.resource.data.get('section', '')))
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.status in ['P', 'T', 'A', 'auto'];
+      allow update: if (canManage()
+          || (myAdvised(resource.data.get('section', '')) && myAdvised(request.resource.data.get('section', ''))))
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.status in ['P', 'T', 'A', 'auto']
+        && request.resource.data.kidId == resource.data.kidId
+        && request.resource.data.month == resource.data.month
+        && request.resource.data.day == resource.data.day
+        && request.resource.data.history.size() > resource.data.history.size();
       allow delete: if false;
     }
   }
