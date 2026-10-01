@@ -164,8 +164,6 @@ button{cursor:pointer}
   #tab-tap.on{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start}
   #tab-tap>.zone{grid-column:1;grid-row:1}#tab-tap>#result{grid-column:1;grid-row:2}#tab-tap>.card{grid-column:2;grid-row:1/span 2;margin:0}
   /* Manage > Grades & sections */
-  #mp-sec:not([hidden]){display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:16px;align-items:start}
-  #mp-sec>.card{margin:0}
   #mp-acc>.card{max-width:640px}
   .seg{max-width:620px}
 }
@@ -307,11 +305,14 @@ button{cursor:pointer}
   </div>
 
   <div class="mpanel" id="mp-sec" hidden>
-    <div class="card">
-      <strong>Add a grade and section</strong>
-      <label for="mGrade">Grade (e.g. Grade 3)</label><input id="mGrade" autocomplete="off">
-      <label for="mSec">Section (e.g. Rizal)</label><input id="mSec" autocomplete="off">
-      <p><button class="btn" id="addSec">Add</button></p>
+    <p class="row"><button class="btn" id="openSec" type="button">+ Add grade &amp; section</button></p>
+    <div class="modal" id="secModal" role="dialog" aria-modal="true" aria-labelledby="secModalTitle" hidden>
+      <div class="modal-box">
+        <strong id="secModalTitle" class="mh">Add a grade and section</strong>
+        <label for="mGrade">Grade (e.g. Grade 3)</label><input id="mGrade" autocomplete="off">
+        <label for="mSec">Section (e.g. Rizal)</label><input id="mSec" autocomplete="off">
+        <p class="row" style="margin-top:12px"><button class="btn" id="addSec" type="button">Add</button><button class="btn alt" id="secCancel" type="button">Cancel</button></p>
+      </div>
     </div>
     <div id="secList"></div>
   </div>
@@ -588,10 +589,14 @@ function renderSecs(){fillKSec();fillStSec();
   document.querySelectorAll('[data-sx]').forEach(b=>b.onclick=()=>{const x=secList.find(z=>z.id===b.dataset.sx);
     if(kids.some(k=>k.section===x.name)){toast('Move or remove its children first.');return}
     if(confirm('Remove '+x.name+'?'))deleteDoc(doc(db,'sections',x.id)).catch(()=>toast('Could not remove.'))})}
+function openSecAdd(){$('secModal').hidden=false;document.body.classList.add('modal-open');setTimeout(()=>($('mGrade').value?$('mSec'):$('mGrade')).focus(),50)}
+function closeSecAdd(){$('secModal').hidden=true;document.body.classList.remove('modal-open')}
+$('openSec').onclick=openSecAdd;$('secCancel').onclick=closeSecAdd;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('secModal').hidden)closeSecAdd()});
 $('addSec').onclick=async()=>{
   const g=$('mGrade').value.trim(),s=$('mSec').value.trim();if(!g||!s){toast('Enter the grade and the section name.');return}
   const name=g+' - '+s;if(secList.some(x=>x.name.toLowerCase()===name.toLowerCase())){toast('That section already exists.');return}
-  try{await addDoc(collection(db,'sections'),{name});$('mSec').value='';toast('Added '+name)}
+  try{await addDoc(collection(db,'sections'),{name});$('mSec').value='';closeSecAdd();toast('Added '+name)}
   catch(e){toast('Could not add ('+(e.code||e.message)+'). Have the new Firestore rules been published?')}};
 
 const secBoxes=x=>{const sp=n=>{const a=n.split(' - ');return [a[0],a.slice(1).join(' - ')]},G={};
