@@ -281,7 +281,8 @@ button{cursor:pointer}
   </details>
   <div class="card noprint">
     <label for="sfMonth">Month</label><input id="sfMonth" type="month">
-    <label for="sfSec">Section</label><select id="sfSec"></select>
+    <div class="frm c2"><div><label for="sfGrade">Grade</label><select id="sfGrade"></select></div><div><label for="sfSecName">Section</label><select id="sfSecName"></select></div></div>
+    <select id="sfSec" hidden></select>
     <p class="row"><span><button class="btn" id="sfGo">Generate SF2</button> <button class="btn alt" id="sfSum">School year summary</button></span><span><button class="btn alt sm" id="sfPrint">Print / PDF</button> <button class="btn alt sm" id="sfCsv">Copy CSV</button></span></p>
   </div>
   <div id="sfOut"></div>
@@ -398,7 +399,7 @@ const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
 const auth2=getAuth(initializeApp(firebaseConfig,'creator')); // used only to create staff logins without signing you out
 
 const COOLDOWN=60000;
-let myRole='',mySecs=[],secList=[],kids=[],logs=[],assigning=null,lastTap={},unsub=[],staffList=[];
+let myRole='',myName='',mySecs=[],secList=[],kids=[],logs=[],assigning=null,lastTap={},unsub=[],staffList=[];
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=t=>new Date(t).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'});
@@ -428,7 +429,7 @@ $('pwSave').onclick=async()=>{
 onAuthStateChanged(auth,async user=>{
   unsub.forEach(u=>u());unsub=[];
   let admin=false;
-  if(user){let ok=false;try{const sd=await getDoc(doc(db,'staff',user.uid));ok=sd.exists();if(ok){myRole=sd.data().role||'staff';mySecs=sd.data().sections||[]}admin=ok&&myRole==='admin'}catch(e){}
+  if(user){let ok=false;try{const sd=await getDoc(doc(db,'staff',user.uid));ok=sd.exists();if(ok){myRole=sd.data().role||'staff';mySecs=sd.data().sections||[];myName=sd.data().name||''}admin=ok&&myRole==='admin'}catch(e){}
     if(!ok){$('loginMsg').textContent='This account is not a staff account. Check the staff document in Firestore: its Document ID must be the User UID of this account.';signOut(auth);return}$('loginMsg').textContent=''}
   $('login').hidden=!!user;$('app').hidden=!user;$('nav').hidden=!user;$('outBtn').hidden=!user;$('pwBtn').hidden=!user;if(!user)$('pwCard').hidden=true;$('navStaff').hidden=!admin;$('navManage').hidden=!admin;
   if(!user)return;
@@ -644,8 +645,29 @@ let sfLast=null,sfOv={},sfEditOpen=false,sfHistOpen=false,sfMode='m',sfSum=null,
 try{const v=JSON.parse(localStorage.getItem(SFKEY)||'{}');SFIDS.forEach(i=>{if(v[i])$(i).value=v[i]})}catch(e){}
 SFIDS.forEach(i=>$(i).onchange=()=>{try{localStorage.setItem(SFKEY,JSON.stringify(Object.fromEntries(SFIDS.map(x=>[x,$(x).value]))))}catch(e){}if(sfLast)drawSF2()});
 {const n=new Date();$('sfMonth').value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')}
-function fillSec(){const cur=$('sfSec').value,secs=[...new Set([...secList.map(x=>x.name),...kids.map(k=>k.section).filter(Boolean)])].filter(x=>myRole!=='adviser'||mySecs.includes(x)).sort(cmp);
-  $('sfSec').innerHTML='<option value="">All children</option>'+secs.map(x=>`<option${x===cur?' selected':''}>${esc(x)}</option>`).join('')}
+function fillSec(){
+  const sp=x=>{const a=x.split(' - ');return [a[0],a.slice(1).join(' - ')]},o=(v,t,on)=>`<option value="${esc(v)}"${on?' selected':''}>${esc(t)}</option>`,
+    secs=[...new Set([...secList.map(x=>x.name),...kids.map(k=>k.section).filter(Boolean)])].filter(x=>myRole!=='adviser'||mySecs.includes(x)).sort(cmp);
+  let g=$('sfGrade').value,sc=$('sfSecName').value;
+  const grades=[...new Set(secs.map(x=>sp(x)[0]))].sort(cmp);
+  if(!grades.includes(g)){g='';sc=''}
+  const names=[...new Set(secs.filter(x=>sp(x)[0]===g).map(x=>sp(x)[1]).filter(Boolean))].sort(cmp);
+  if(g&&names.length&&!names.includes(sc))sc=names[0];
+  if(!g||!names.length)sc='';
+  const cv=g?(sc?g+' - '+sc:g):'';
+  $('sfGrade').innerHTML=o('','All children',!g)+grades.map(x=>o(x,x,x===g)).join('');
+  $('sfSecName').innerHTML=g&&names.length?names.map(x=>o(x,x,x===sc)).join(''):o('','All sections',true);
+  $('sfSecName').disabled=!(g&&names.length);
+  $('sfSec').innerHTML=o('','All children',!cv)+secs.map(x=>o(x,x,x===cv)).join('')}
+// Picking a grade and section fills in the class adviser when that section has one
+function autoAdviser(){
+  const sec=$('sfSec').value;if(!sec)return;
+  const full=n=>{const a=splitName(n);return [a[1],a[2],a[0]].filter(Boolean).join(' ')};
+  const ns=(myRole==='adviser'?[myName]:staffList.filter(x=>x.role==='adviser'&&(x.sections||[]).includes(sec)).map(x=>x.name)).filter(Boolean).map(full);
+  if(!ns.length)return;
+  $('sfAdv').value=ns.join(' / ');$('sfAdv').dispatchEvent(new Event('change'))}
+$('sfGrade').onchange=()=>{$('sfSecName').value='';fillSec();autoAdviser()};
+$('sfSecName').onchange=()=>{fillSec();autoAdviser()};
 
 $('sfGo').onclick=async()=>{
   const [y,m]=($('sfMonth').value||'').split('-').map(Number);if(!y){toast('Choose a month.');return}
