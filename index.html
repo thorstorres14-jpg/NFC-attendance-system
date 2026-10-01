@@ -38,7 +38,7 @@ input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1.5px so
 .tag.ok{color:var(--ok)}.tag.no{color:var(--bad)}
 .note{font-size:.88rem;color:var(--mute)}
 textarea{resize:vertical;min-height:96px}
-#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%;text-align:center}
+#toast{z-index:100;position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%;text-align:center}
 #toast.on{opacity:1}
 .sf{border-collapse:collapse;font-size:11px;color:var(--ink)}
 .sf td,.sf th{border:1px solid var(--mute);padding:2px 4px;text-align:center;min-width:20px}
@@ -115,6 +115,11 @@ main:has(#tab-sf2.on){max-width:1180px}
 .fr{grid-template-columns:1.4em 20em minmax(0,1fr) 2.6em;font-size:.86em;gap:4px}.fr>span:nth-child(2){text-align:left;white-space:nowrap}
 .sfg>div.gl{min-width:0}.sf.sfsum{table-layout:fixed;width:100%}.sfsum td,.sfsum th{overflow-wrap:anywhere}.gr{min-width:0;box-sizing:border-box}.sfg{max-width:100%}.fr{min-width:0}
 .fr .frac{display:grid;justify-self:center;width:max-content;max-width:100%;text-align:center}.fr .frac b{padding:0 6px}.fr>span:last-child{text-align:left}
+/* Add/Edit child modal */
+.modal{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top,0px)) 12px max(12px,env(safe-area-inset-bottom,0px));background:rgba(0,0,0,.55)}
+.modal-box{width:100%;max-width:520px;max-height:100%;overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+.modal-box .mh{margin-bottom:4px;font-size:1.1rem}
+body.modal-open{overflow:hidden}
 /* Add/Edit child form rows */
 .frm{display:grid;gap:8px}.frm>div{min-width:0}.frm.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .frm.c2{grid-template-columns:repeat(2,minmax(0,1fr))}.frm.c2s{grid-template-columns:minmax(0,1fr) minmax(0,1.7fr)}
@@ -161,8 +166,10 @@ main:has(#tab-sf2.on){max-width:1180px}
 
 <section id="tab-kids">
   <div id="reqBox"></div>
-  <div class="card">
-    <strong id="formTitle">Add a child</strong>
+  <p class="row"><button class="btn" id="openAdd" type="button">+ Add child</button></p>
+  <div class="modal" id="kidModal" role="dialog" aria-modal="true" aria-labelledby="formTitle" hidden>
+    <div class="modal-box">
+    <strong id="formTitle" class="mh">Add a child</strong>
     <div class="frm c3"><div><label for="kLast">Last name</label><input id="kLast" autocomplete="off"></div>
       <div><label for="kFirst">First name</label><input id="kFirst" autocomplete="off"></div>
       <div><label for="kMid">Middle name</label><input id="kMid" autocomplete="off"></div></div>
@@ -175,7 +182,8 @@ main:has(#tab-sf2.on){max-width:1180px}
       <div><label for="kAltPhone">Alternate contact number (optional)</label><input id="kAltPhone" inputmode="tel"></div></div>
     <div class="frm"><div><label for="kEmail">Parent's email (for the parent app)</label><input id="kEmail" type="email" autocomplete="off"></div></div>
     <div class="frm"><div><label for="kEmail2">Second email (optional, e.g. the other parent)</label><input id="kEmail2" type="email" autocomplete="off"></div></div>
-    <p class="row"><button class="btn" id="addKid">Add</button><button class="btn alt sm" id="cancelEdit" hidden>Cancel</button></p>
+    <p class="row" style="margin-top:12px"><button class="btn" id="addKid">Add</button><button class="btn alt" id="cancelEdit" type="button">Cancel</button></p>
+    </div>
   </div>
   <div class="frm c2"><div><label for="kfGrade">Grade</label><select id="kfGrade"></select></div>
     <div><label for="kfSec">Section</label><select id="kfSec"></select></div></div>
@@ -377,14 +385,18 @@ const emailsOf=k=>k.parentEmails||(k.parentEmail?[k.parentEmail]:[]);
 function setForm(k){
   editing=k?k.id:null;
   $('formTitle').textContent=k?'Edit child':'Add a child';
-  $('addKid').textContent=k?'Save':'Add';$('cancelEdit').hidden=!k;
+  $('addKid').textContent=k?'Save':'Add';
   const e=k?emailsOf(k):[];
   $('kSex').value=k?(k.sex||''):'';fillKSec(k?k.section:'');$('kSec').value=k?(k.section||''):'';{const nm=k?splitName(k.name):['','',''];$('kLast').value=nm[0];$('kFirst').value=nm[1];$('kMid').value=nm[2]}$('kParent').value=k?(k.parent||''):'';$('kPhone').value=k?k.phone:'';$('kAltName').value=k?(k.altName||''):'';$('kAltPhone').value=k?(k.altPhone||''):'';
   $('kEmail').value=e[0]||'';$('kEmail2').value=e[1]||''}
 // Names are stored as "Last, First, Middle" (the way SF2 prints them)
 function splitName(n){n=(n||'').trim();if(n.includes(',')){const p=n.split(',').map(x=>x.trim());return [p[0]||'',p[1]||'',p.slice(2).join(' ')]}
   const w=n.split(/\s+/);return [w[0]||'',w.slice(1).join(' '),'']}
-$('cancelEdit').onclick=()=>setForm(null);
+function openKid(k){setForm(k||null);$('kidModal').hidden=false;document.body.classList.add('modal-open');$('kidModal').firstElementChild.scrollTop=0;setTimeout(()=>$('kLast').focus(),50)}
+function closeKid(){$('kidModal').hidden=true;document.body.classList.remove('modal-open');setForm(null)}
+$('openAdd').onclick=()=>openKid(null);
+$('cancelEdit').onclick=closeKid;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('kidModal').hidden)closeKid()});
 $('addKid').onclick=async()=>{
   const last=$('kLast').value.trim(),first=$('kFirst').value.trim(),mid=$('kMid').value.trim(),name=[last,first,mid].filter(Boolean).join(', '),parent=$('kParent').value.trim(),phone=$('kPhone').value.trim(),altName=$('kAltName').value.trim(),altPhone=$('kAltPhone').value.trim(),sex=$('kSex').value,section=$('kSec').value.trim();
   const emails=[$('kEmail').value,$('kEmail2').value].map(x=>x.trim().toLowerCase()).filter((x,i,a)=>x&&a.indexOf(x)===i);
@@ -398,7 +410,7 @@ $('addKid').onclick=async()=>{
       toast('Changes saved');
     }else{
       await addDoc(collection(db,'kids'),{name,parent,phone,altName,altPhone,parentEmails:emails,uid:null,sex,section});toast('Added '+name)}
-    setForm(null);
+    closeKid();
   }catch(e){toast('Could not save ('+(e.code||e.message)+').')}};
 
 function render(){fillSec();renderSecs();
@@ -407,9 +419,9 @@ function render(){fillSec();renderSecs();
   $('kidList').innerHTML=kids.length?(kview.length?kview.map(k=>k._h?`<div class="day">${esc(k._h)}</div>`:`<div class="card"><div class="row"><div><strong>${esc(k.name)}</strong><div class="note">${k.sex==='M'?'Male':k.sex==='F'?'Female':'Sex not set'} | ${esc(k.section||'No section')}</div><div class="note">${esc(k.parent||'')} ${esc(k.phone)}</div>${k.altPhone?`<div class="note">Alternate: ${esc(k.altName||'')} ${esc(k.altPhone)}</div>`:''}${k.contactUpdatedAt?`<div class="note">Contact details updated by a parent on ${new Date(k.contactUpdatedAt).toLocaleDateString('en-PH',{month:'short',day:'numeric'})}</div>`:''}<div class="note">${esc(emailsOf(k).join(', '))}</div></div>
    <span class="tag ${k.uid?'ok':'no'}">${k.uid?'Has card':'No card'}</span></div>
    <div class="row" style="margin-top:8px"><button class="btn alt sm" data-a="${k.id}">${assigning===k.id?'Waiting for a tap...':(k.uid?'Replace card':'Link card')}</button>
-   <span><button class="btn alt sm" data-e="${k.id}">Edit</button> <button class="btn alt sm" data-d="${k.id}">Remove</button></span></div></div>`).join(''):'<p class="note">No children match this filter.</p>'):'<p class="note">No children yet. Add one above.</p>';
+   <span><button class="btn alt sm" data-e="${k.id}">Edit</button> <button class="btn alt sm" data-d="${k.id}">Remove</button></span></div></div>`).join(''):'<p class="note">No children match this filter.</p>'):'<p class="note">No children yet. Tap "+ Add child" above.</p>';
   document.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{assigning=b.dataset.a;toast('Tap the new card now.');render()});
-  document.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{setForm(kids.find(k=>k.id===b.dataset.e));window.scrollTo({top:0,behavior:'smooth'})});
+  document.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>openKid(kids.find(k=>k.id===b.dataset.e)));
   document.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{if(confirm('Remove this child?'))deleteDoc(doc(db,'kids',b.dataset.d))});
   const t=[...logs].reverse();
   $('logHead').textContent='Today ('+t.length+')';
@@ -744,7 +756,7 @@ function renderReq(){
     updateDoc(doc(db,'changeRequests',id),{status,note:note.trim().slice(0,300),resolvedBy:auth.currentUser.uid,resolvedTime:Date.now()}).catch(()=>toast('Could not update the request.'))};
   box.querySelectorAll('[data-rd]').forEach(b=>b.onclick=()=>resolve(b.dataset.rd,'done'));
   box.querySelectorAll('[data-rx]').forEach(b=>b.onclick=()=>resolve(b.dataset.rx,'declined'));
-  box.querySelectorAll('[data-ro]').forEach(b=>b.onclick=()=>{const k=kids.find(x=>x.id===b.dataset.ro);if(k){setForm(k);window.scrollTo({top:document.querySelector('#formTitle').offsetTop-20,behavior:'smooth'})}else toast('Child not found.')})}
+  box.querySelectorAll('[data-ro]').forEach(b=>b.onclick=()=>{const k=kids.find(x=>x.id===b.dataset.ro);if(k)openKid(k);else toast('Child not found.')})}
 
 // --- Children tab: filter by grade / section / adviser, grouped by section or adviser
 const splitSec=x=>{const a=(x||'').split(' - ');return [a[0],a.slice(1).join(' - ')]};
