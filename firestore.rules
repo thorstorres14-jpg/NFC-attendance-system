@@ -106,13 +106,23 @@ service cloud.firestore {
     match /settings/{id} {
       allow read: if isStaff() || (request.auth != null && request.auth.token.email_verified == true);
       allow create, update: if isAdmin() && id == 'school'
-        && request.resource.data.keys().hasOnly(['parentEdit', 'parentRequests', 'schoolName', 'schoolYear', 'schoolLogo'])
+        && request.resource.data.keys().hasOnly(['parentEdit', 'parentRequests', 'schoolName', 'schoolYear', 'schoolLogo', 'schoolId', 'schoolHead', 'lateAfter'])
         && request.resource.data.get('parentEdit', false) is bool
         && request.resource.data.get('parentRequests', false) is bool
-        // School name, school year and logo (a small image as a data URL) shown on every device.
+        // School name, year, ID, head, late-after time and logo (a small image as a data URL) shown on every device.
         && request.resource.data.get('schoolName', '') is string && request.resource.data.get('schoolName', '').size() <= 120
         && request.resource.data.get('schoolYear', '') is string && request.resource.data.get('schoolYear', '').size() <= 20
+        && request.resource.data.get('schoolId', '') is string && request.resource.data.get('schoolId', '').size() <= 30
+        && request.resource.data.get('schoolHead', '') is string && request.resource.data.get('schoolHead', '').size() <= 120
+        && request.resource.data.get('lateAfter', '') is string
+        && (request.resource.data.get('lateAfter', '') == '' || request.resource.data.get('lateAfter', '').matches('^([01][0-9]|2[0-3]):[0-5][0-9]$'))
         && request.resource.data.get('schoolLogo', '') is string && request.resource.data.get('schoolLogo', '').size() <= 600000;
+      // The two SF2 report logos, kept in their own document so the school record stays small.
+      // An empty string means "use the default logo".
+      allow create, update: if isAdmin() && id == 'sf2logos'
+        && request.resource.data.keys().hasOnly(['left', 'right'])
+        && request.resource.data.get('left', '') is string && request.resource.data.get('left', '').size() <= 400000
+        && request.resource.data.get('right', '') is string && request.resource.data.get('right', '').size() <= 400000;
     }
 
     match /log/{id} {
