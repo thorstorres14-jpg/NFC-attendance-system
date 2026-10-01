@@ -11,8 +11,8 @@
 <title>Tap-In Parents</title>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#eef4f6;--card:#fff;--ink:#16323a;--mute:#5c7a83;--line:#d5e3e7;--acc:#0f7c8c;--acc-ink:#fff;--sun:#f2b233;--ok:#1f8f5f;--bad:#c2410c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root{--bg:#0f1e23;--card:#172a30;--ink:#e6f1f3;--mute:#8fb0b8;--line:#28434b;--acc:#3cb6c6;--acc-ink:#062026;--ok:#4cc790;--bad:#f08a5d}}
+:root{--bg:#eef4f6;--card:#fff;--ink:#16323a;--mute:#3f5a63;--line:#d5e3e7;--field:#9fbcc4;--acc:#0f7c8c;--acc-ink:#fff;--sun:#f2b233;--ok:#1f8f5f;--bad:#c2410c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1e23;--card:#172a30;--ink:#e6f1f3;--mute:#8fb0b8;--line:#28434b;--field:#28434b;--acc:#3cb6c6;--acc-ink:#062026;--ok:#4cc790;--bad:#f08a5d}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Fredoka,system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -27,13 +27,13 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .btn.sm{padding:6px 12px;font-size:.9rem}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
 .row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-label{display:block;font-size:.9rem;color:var(--mute);margin:8px 0 2px}
-input,textarea{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
+label{display:block;font-size:1rem;color:var(--mute);margin:10px 0 3px}
+input,textarea{width:100%;padding:12px 10px;min-height:48px;border-radius:10px;border:1.5px solid var(--field,var(--line));background:var(--bg);color:var(--ink);font:inherit}
 .big{font-size:1.15rem;font-weight:600}
-.pill{font-size:.85rem;padding:3px 10px;border-radius:99px;background:var(--bg);color:var(--mute)}
+.pill{font-size:.9rem;padding:3px 10px;border-radius:99px;background:var(--bg);color:var(--mute)}
 .pill.in{color:var(--ok)}
 .day{margin:12px 0 4px;font-weight:500;color:var(--mute);font-size:.9rem}
-.note{font-size:.88rem;color:var(--mute)}
+.note{font-size:.95rem;color:var(--mute)}
 textarea{resize:vertical;min-height:84px}
 .ann{border-left:5px solid var(--line)}
 .ann.new{border-left-color:var(--sun);background:color-mix(in srgb,var(--sun) 12%,var(--card))}
