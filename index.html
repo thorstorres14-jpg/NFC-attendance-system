@@ -115,6 +115,8 @@ main:has(#tab-sf2.on){max-width:1180px}
 .fr{grid-template-columns:1.4em 20em minmax(0,1fr) 2.6em;font-size:.86em;gap:4px}.fr>span:nth-child(2){text-align:left;white-space:nowrap}
 .sfg>div.gl{min-width:0}.sf.sfsum{table-layout:fixed;width:100%}.sfsum td,.sfsum th{overflow-wrap:anywhere}.gr{min-width:0;box-sizing:border-box}.sfg{max-width:100%}.fr{min-width:0}
 .fr .frac{display:grid;justify-self:center;width:max-content;max-width:100%;text-align:center}.fr .frac b{padding:0 6px}.fr>span:last-child{text-align:left}
+/* search boxes */
+.sr{display:flex;gap:8px;align-items:center;margin:8px 0}.sr input{flex:1;min-width:0}.sr .btn{flex:none;white-space:nowrap}
 /* Add/Edit child modal */
 .modal{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top,0px)) 12px max(12px,env(safe-area-inset-bottom,0px));background:rgba(0,0,0,.55)}
 .modal-box{width:100%;max-width:520px;max-height:100%;overflow-y:auto;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
@@ -159,8 +161,9 @@ body.modal-open{overflow:hidden}
   <div class="card">
     <strong>Try without NFC</strong>
     <div class="frm c2"><div><label for="simGrade">Grade</label><select id="simGrade"></select></div><div><label for="simSec">Section</label><select id="simSec"></select></div></div>
+    <label for="simQ">Search name</label><input id="simQ" type="search" placeholder="Type a child's name" autocomplete="off">
     <label for="simKid">Choose a child</label><select id="simKid"></select>
-    <p><button class="btn alt" id="simBtn">Simulate a tap</button></p>
+    <p class="row" style="justify-content:flex-start"><button class="btn alt" id="simBtn">Simulate a tap</button><button class="btn alt" id="simClear" type="button" hidden>Clear filters</button></p>
   </div>
 </section>
 
@@ -185,16 +188,18 @@ body.modal-open{overflow:hidden}
     <p class="row" style="margin-top:12px"><button class="btn" id="addKid">Add</button><button class="btn alt" id="cancelEdit" type="button">Cancel</button></p>
     </div>
   </div>
+  <div class="sr"><input id="kfQ" type="search" placeholder="Search child or parent name" aria-label="Search children" autocomplete="off"></div>
   <div class="frm c2"><div><label for="kfGrade">Grade</label><select id="kfGrade"></select></div>
     <div><label for="kfSec">Section</label><select id="kfSec"></select></div></div>
   <div class="frm c2" id="kfAdvWrap" hidden><div><label for="kfAdv">Adviser</label><select id="kfAdv"></select></div>
     <div><label for="kfGroup">Group by</label><select id="kfGroup"><option value="sec">Section</option><option value="adv">Adviser</option></select></div></div>
-  <p class="note" id="kfCount"></p>
+  <div class="row" style="margin:8px 0"><span class="note" id="kfCount"></span><button class="btn alt sm" id="kfClear" type="button" hidden>Clear filters</button></div>
   <div id="kidList"></div>
 </section>
 
 <section id="tab-log">
   <div class="row" style="margin-bottom:10px"><strong id="logHead">Today</strong><button class="btn alt sm" id="csvBtn">Copy as CSV</button></div>
+  <div class="sr"><input id="logQ" type="search" placeholder="Search name" aria-label="Search today's log" autocomplete="off"><button class="btn alt sm" id="logClear" type="button" hidden>Clear</button></div>
   <div id="logList"></div>
 </section>
 
@@ -379,6 +384,9 @@ function showResult(k,e){
   <div class="msg">${esc(m)}</div>
   <a class="btn sm" href="sms:${encodeURIComponent(k.phone)}?body=${encodeURIComponent(m)}">Send to ${esc(k.parent||'parent')}</a></div>`}
 
+// --- search helper: every word typed must appear somewhere in the text (ignores case, commas and periods)
+function normQ(x){return String(x||'').toLowerCase().replace(/[,.]/g,' ').replace(/\s+/g,' ').trim()}
+function qMatch(hay,q){q=normQ(q);if(!q)return true;hay=normQ(hay);return q.split(' ').every(w=>hay.includes(w))}
 // --- kids
 let editing=null;
 const emailsOf=k=>k.parentEmails||(k.parentEmail?[k.parentEmail]:[]);
@@ -423,20 +431,25 @@ function render(){fillSec();renderSecs();
   document.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{assigning=b.dataset.a;toast('Tap the new card now.');render()});
   document.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>openKid(kids.find(k=>k.id===b.dataset.e)));
   document.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{if(confirm('Remove this child?'))deleteDoc(doc(db,'kids',b.dataset.d))});
-  const t=[...logs].reverse();
-  $('logHead').textContent='Today ('+t.length+')';
-  $('logList').innerHTML=t.length?t.map(l=>`<div class="card row"><strong>${esc(l.name)}</strong><span class="tag ${l.type==='in'?'ok':''}">${l.type==='in'?'Arrived':'Left'} ${fmt(l.time)}</span></div>`).join(''):'<p class="note">No taps yet today.</p>'}
+  const all=[...logs].reverse(),lq=$('logQ').value,t=all.filter(l=>qMatch(l.name,lq));
+  $('logClear').hidden=!normQ(lq);
+  $('logHead').textContent='Today ('+(normQ(lq)?t.length+' of '+all.length:t.length)+')';
+  $('logList').innerHTML=t.length?t.map(l=>`<div class="card row"><strong>${esc(l.name)}</strong><span class="tag ${l.type==='in'?'ok':''}">${l.type==='in'?'Arrived':'Left'} ${fmt(l.time)}</span></div>`).join(''):`<p class="note">${all.length?'No names match your search.':'No taps yet today.'}</p>`}
+$('logQ').oninput=()=>render();
+$('logClear').onclick=()=>{$('logQ').value='';render()};
 
 // Try without NFC: narrow the child list by grade and section (sections are saved as "Grade 2 - Joshua")
-function fillSim(){const sp=x=>{const a=(x||'').split(' - ');return [a[0],a.slice(1).join(' - ')]},g0=$('simGrade').value,s0=$('simSec').value,k0=$('simKid').value,
+function fillSim(){const sp=x=>{const a=(x||'').split(' - ');return [a[0],a.slice(1).join(' - ')]},g0=$('simGrade').value,s0=$('simSec').value,k0=$('simKid').value,q=$('simQ').value,
     o=(v,t,on)=>`<option value="${esc(v)}"${on?' selected':''}>${esc(t)}</option>`,
     grades=[...new Set(kids.map(k=>sp(k.section)[0]).filter(Boolean))].sort(cmp),g=grades.includes(g0)?g0:'';
   $('simGrade').innerHTML=o('','All grades',!g)+grades.map(x=>o(x,x,x===g)).join('');
   const secs=[...new Set(kids.filter(k=>!g||sp(k.section)[0]===g).map(k=>sp(k.section)[1]).filter(Boolean))].sort(cmp),sc=secs.includes(s0)?s0:'';
   $('simSec').innerHTML=o('','All sections',!sc)+secs.map(x=>o(x,x,x===sc)).join('');
-  const ks=kids.filter(k=>{const [a,b]=sp(k.section);return (!g||a===g)&&(!sc||b===sc)});
-  $('simKid').innerHTML=ks.length?ks.map(k=>`<option value="${k.id}"${k.id===k0?' selected':''}>${esc(k.name)}</option>`).join(''):`<option value="">${kids.length?'No children in this section':'No children yet'}</option>`}
-$('simGrade').onchange=fillSim;$('simSec').onchange=fillSim;
+  $('simClear').hidden=!(g||sc||normQ(q));
+  const ks=kids.filter(k=>{const [a,b]=sp(k.section);return (!g||a===g)&&(!sc||b===sc)&&qMatch(k.name,q)});
+  $('simKid').innerHTML=ks.length?ks.map(k=>`<option value="${k.id}"${k.id===k0?' selected':''}>${esc(k.name)}</option>`).join(''):`<option value="">${kids.length?'No children match':'No children yet'}</option>`}
+$('simGrade').onchange=fillSim;$('simSec').onchange=fillSim;$('simQ').oninput=fillSim;
+$('simClear').onclick=()=>{$('simQ').value='';$('simGrade').value='';$('simSec').value='';fillSim()};
 $('simBtn').onclick=async()=>{
   const k=kids.find(x=>x.id===$('simKid').value);if(!k){toast('Choose a child first.');return}
   if(!k.uid){if(myRole==='gate'){toast('This child has no card yet. Ask an admin to link one.');return}k.uid='TEST-'+k.id;await updateDoc(doc(db,'kids',k.id),{uid:k.uid})}
@@ -787,11 +800,12 @@ function fillKidFilter(){
   $('kfAdv').innerHTML=o('','All advisers',!a)+advsFor(g,s).map(x=>o(x.id,x.email||x.id,x.id===a)).join('')+(noAdvOk(g,s)?o('__none','No adviser',a==='__none'):'');
   $('kfAdvWrap').hidden=!advs.length}
 function viewKids(){
-  const g=$('kfGrade').value,s=$('kfSec').value,a=$('kfAdv').value,byAdv=!$('kfAdvWrap').hidden&&$('kfGroup').value==='adv',
-    list=kids.filter(k=>(!g||splitSec(k.section)[0]===g)&&(!s||(s==='__none'?!k.section:k.section===s))
+  const g=$('kfGrade').value,s=$('kfSec').value,a=$('kfAdv').value,q=$('kfQ').value,byAdv=!$('kfAdvWrap').hidden&&$('kfGroup').value==='adv',
+    list=kids.filter(k=>qMatch([k.name,k.parent,k.altName,k.phone,k.altPhone,emailsOf(k).join(' ')].join(' '),q)&&(!g||splitSec(k.section)[0]===g)&&(!s||(s==='__none'?!k.section:k.section===s))
         &&(!a||(a==='__none'?!advOf(k).length:advOf(k).includes(a))))
       .sort((x,y)=>cmp(x.section||'~',y.section||'~')||cmp(x.name||'',y.name||''));
-  $('kfCount').textContent=(g||s||a)?`Showing ${list.length} of ${kids.length}`:`${kids.length} ${kids.length===1?'child':'children'}`;
+  $('kfClear').hidden=!(g||s||a||normQ(q)||$('kfGroup').value!=='sec');
+  $('kfCount').textContent=(g||s||a||normQ(q))?`Showing ${list.length} of ${kids.length}`:`${kids.length} ${kids.length===1?'child':'children'}`;
   const out=[];
   if(byAdv){
     const groups={};
@@ -808,6 +822,8 @@ $('kfGrade').onchange=()=>render();
 $('kfSec').onchange=()=>render();
 $('kfAdv').onchange=()=>render();
 $('kfGroup').onchange=()=>render();
+$('kfQ').oninput=()=>render();
+$('kfClear').onclick=()=>{$('kfQ').value='';$('kfGrade').value='';$('kfSec').value='';$('kfAdv').value='';$('kfGroup').value='sec';render()};
 </script>
 </body>
 </html>
