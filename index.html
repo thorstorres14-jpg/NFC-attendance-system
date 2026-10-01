@@ -176,6 +176,12 @@ button{cursor:pointer}
   .btn:hover{filter:brightness(1.08)}.btn.alt:hover{background:var(--bg)}
 }
 
+.mono{display:grid;place-items:center;flex:none;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font-weight:600;box-shadow:0 0 0 4px rgba(255,255,255,.12)}
+.hero-logo.mono{font-size:2.2rem;padding:0;background:rgba(255,255,255,.16);color:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.2)}
+.navbrand .mono{width:44px;height:44px;font-size:1.2rem;background:var(--acc);color:var(--acc-ink);box-shadow:none}
+.mono svg{width:46%;height:46%}
+.schprev{display:inline-grid;place-items:center;min-width:56px;height:56px}
+.schprev img{width:56px;height:56px;object-fit:contain;border-radius:8px;background:#fff;padding:3px}
 /* ---------- Tap tab: school header, live 12-hour clock, scanner polish ---------- */
 .hero{--hero:#0d4d58;grid-column:1/-1;display:grid;gap:18px 28px;align-items:center;padding:20px 20px 24px;margin-bottom:14px;border-radius:24px;background:var(--hero);color:#fff;position:relative;overflow:hidden}
 @media (prefers-color-scheme:dark){.hero{--hero:#133840;border:1px solid var(--line)}}
@@ -203,7 +209,7 @@ button{cursor:pointer}
 .cardh{display:block;font-size:1.05rem}
 .navbrand{display:none;gap:12px;align-items:center;padding:0 6px 16px;margin-bottom:6px;border-bottom:1px solid var(--line)}
 .navbrand img{width:44px;height:44px;flex:none;object-fit:contain;padding:3px;border-radius:50%;background:#fff}
-.navbrand span{min-width:0;font-size:.92rem;font-weight:600;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.navbrand span:not(.mono){min-width:0;font-size:.92rem;font-weight:600;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow-wrap:anywhere}
 @media screen and (min-width:700px){
   .hero{grid-template-columns:minmax(0,1fr) auto;padding:26px 32px 30px}
   .hero-clock{text-align:right}.clk{justify-content:flex-end}
@@ -243,7 +249,7 @@ button{cursor:pointer}
 <section id="tab-tap" class="on">
   <div class="hero" id="hero">
     <div class="hero-brand">
-      <img class="hero-logo" id="heroLogo" alt="School logo">
+      <img class="hero-logo" id="heroLogo" alt="School logo" hidden><span class="hero-logo mono" id="heroMono" aria-hidden="true"></span>
       <div class="hero-txt">
         <h2 class="hero-name" id="heroName" hidden></h2>
         <button class="hero-set" id="heroSet" type="button">Add your school name and logo</button>
@@ -322,7 +328,9 @@ button{cursor:pointer}
   </div>
   <div class="card">
     <strong>Logos</strong>
-    <p class="note">Shown at the top of the SF2 report.</p>
+    <label for="schLogoFile">School logo (shown on the Tap screen)</label>
+    <div class="row"><span class="schprev"><img id="schLogoPrev" alt="School logo" hidden><span id="schLogoNone" class="note">No logo yet</span></span><span><input type="file" id="schLogoFile" accept="image/*"> <button class="btn alt sm" id="schLogoDel" type="button" hidden>Remove</button></span></div>
+    <p class="note" style="margin-top:14px">The two logos below are shown at the top of the SF2 report.</p>
     <label for="sfLogoFile">Logo, upper left (DepEd seal by default)</label>
     <div class="row"><img id="sfLogoPrev" alt="Logo left" style="width:48px;height:48px;object-fit:contain"><span><input type="file" id="sfLogoFile" accept="image/*"> <button class="btn alt sm" id="sfLogoReset" type="button">Use default</button></span></div>
     <label for="sfLogoFile2">Logo, upper right (DepEd logo by default)</label>
@@ -430,7 +438,7 @@ button{cursor:pointer}
 </main>
 
 <nav role="tablist" id="nav" hidden>
-  <div class="navbrand" aria-hidden="true"><img id="navLogo" alt=""><span id="navName">Tap-In Attendance</span></div>
+  <div class="navbrand" aria-hidden="true"><img id="navLogo" alt="" hidden><span class="mono" id="navMono" aria-hidden="true"></span><span id="navName">Tap-In Attendance</span></div>
   <button role="tab" aria-selected="true" data-tab="tap">Tap</button>
   <button role="tab" aria-selected="false" data-tab="kids">Children</button>
   <button role="tab" aria-selected="false" data-tab="log">Log</button>
@@ -890,12 +898,29 @@ function logoUp(side,def){const key=side===2?'sf2logo2':SFLOGOKEY;
 logoUp(1,SFLOGO);logoUp(2,SFLOGO2);
 
 // --- Tap tab header: school logo + name, and a live 12-hour clock with the date
+const SCHKEY='schoollogo';let schLogo='';
+try{schLogo=localStorage.getItem(SCHKEY)||''}catch(e){}
+const SKIPW=/^(elementary|school|national|high|integrated|central|of|the|and|and|ng|sa)$/i;
+function schInitials(n){const w=String(n||'').split(/\s+/).filter(x=>x&&!SKIPW.test(x));return w.slice(0,2).map(x=>x[0]).join('').toUpperCase()}
+const MONOSVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6"/><path d="M5 10v9h14v-9"/><path d="M10 19v-5h4v5"/></svg>';
 function renderBrand(){
-  const nm=($('sfSchool').value||'').trim(),yr=($('sfYear').value||'').trim();
-  $('heroLogo').src=sfLogoCur;$('navLogo').src=sfLogoCur;
+  const nm=($('sfSchool').value||'').trim(),yr=($('sfYear').value||'').trim(),ini=schInitials(nm);
+  [['heroLogo','heroMono'],['navLogo','navMono']].forEach(([i,m])=>{
+    const im=$(i),mo=$(m);im.hidden=!schLogo;if(schLogo)im.src=schLogo;
+    mo.hidden=!!schLogo;if(!schLogo){if(ini)mo.textContent=ini;else mo.innerHTML=MONOSVG}});
+  $('schLogoPrev').hidden=!schLogo;$('schLogoNone').hidden=!!schLogo;$('schLogoDel').hidden=!schLogo;
+  if(schLogo)$('schLogoPrev').src=schLogo;
   $('heroName').textContent=nm;$('heroName').hidden=!nm;$('heroSet').hidden=!!nm;
   $('heroYear').textContent=yr?'School Year '+yr:'';$('heroYear').hidden=!yr;
   $('navName').textContent=nm||'Tap-In Attendance'}
+$('schLogoFile').onchange=e=>{const f=e.target.files[0];if(!f)return;if(!/^image\//.test(f.type)){toast('Choose an image file.');return}
+  const im=new Image(),u=URL.createObjectURL(f);
+  im.onload=()=>{const sc=Math.min(1,512/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
+    c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);schLogo=c.toDataURL('image/png');
+    try{localStorage.setItem(SCHKEY,schLogo)}catch(x){toast('Could not keep the logo on this device; it will reset on reload.')}
+    renderBrand();toast('School logo updated');e.target.value=''};
+  im.onerror=()=>toast('Could not read that image.');im.src=u};
+$('schLogoDel').onclick=()=>{schLogo='';try{localStorage.removeItem(SCHKEY)}catch(e){}renderBrand();toast('School logo removed')};
 $('heroSet').onclick=()=>{showTab('school');$('sfSchool').focus()};
 ['sfSchool','sfYear'].forEach(i=>$(i).addEventListener('input',renderBrand));
 renderBrand();
