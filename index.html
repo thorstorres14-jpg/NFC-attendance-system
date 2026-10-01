@@ -157,7 +157,7 @@ main:has(#tab-sf2.on){max-width:1180px}
 .modal-box .mh{margin-bottom:4px;font-size:1.1rem}
 body.modal-open{overflow:hidden}
 /* Add/Edit child form rows */
-.frm{display:grid;gap:8px}.frm>div{min-width:0}.frm.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.frm{display:grid;gap:8px}.frm>div{min-width:0;display:flex;flex-direction:column;justify-content:flex-end}.frm.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .frm.c2{grid-template-columns:repeat(2,minmax(0,1fr))}.frm.c2s{grid-template-columns:minmax(0,1fr) minmax(0,1.7fr)}
 @media(max-width:340px){.frm.c3,.frm.c2,.frm.c2s{grid-template-columns:1fr}}
 
