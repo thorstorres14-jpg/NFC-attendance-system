@@ -274,9 +274,16 @@ body.modal-open{overflow:hidden}
   <div class="card">
     <strong>Add staff</strong>
     <p class="note">Creates a staff login. Give the person the email and a temporary password.</p>
-    <label for="sEmail">Email</label><input id="sEmail" type="email" autocomplete="off">
-    <label for="sRole">Role</label><select id="sRole"><option value="adviser">Class adviser (sees only assigned sections)</option><option value="gate">Gate staff (taps only)</option></select>
-    <label for="sPw">Temporary password (at least 6 characters)</label><input id="sPw" type="text" autocomplete="off">
+    <div class="frm c3"><div><label for="sLast">Last name</label><input id="sLast" autocomplete="off"></div>
+      <div><label for="sFirst">First name</label><input id="sFirst" autocomplete="off"></div>
+      <div><label for="sMid">Middle name</label><input id="sMid" autocomplete="off"></div></div>
+    <div class="frm"><div><label for="sEmail">Email</label><input id="sEmail" type="email" autocomplete="off"></div></div>
+    <div class="frm c2"><div><label for="sPhone">Contact number</label><input id="sPhone" inputmode="tel" placeholder="09xx xxx xxxx" autocomplete="off"></div>
+      <div><label for="sGender">Gender</label><select id="sGender"><option value="">Select...</option><option value="M">Male</option><option value="F">Female</option></select></div></div>
+    <div class="frm"><div><label for="sRole">Role</label><select id="sRole"><option value="adviser">Teacher / Class adviser (sees only assigned sections)</option><option value="gate">Gate staff (taps only)</option></select></div></div>
+    <div class="frm c2" id="sAdvWrap"><div><label for="sGrade">Advisory grade</label><select id="sGrade"></select></div>
+      <div><label for="sSecName">Advisory section</label><select id="sSecName"></select></div></div>
+    <div class="frm"><div><label for="sPw">Temporary password (at least 6 characters)</label><input id="sPw" type="text" autocomplete="off"></div></div>
     <p><button class="btn" id="addStaff">Add staff</button></p>
   </div>
   <div id="staffList"></div>
@@ -491,7 +498,7 @@ function fillKSec(cur){const n=secList.map(x=>x.name);if(cur&&!n.includes(cur))n
   const cv=sc?g+' - '+sc:g;
   $('kSec').innerHTML='<option value="">Select...</option>'+n.map(x=>`<option${x===cv?' selected':''}>${esc(x)}</option>`).join('')}
 $('kGrade').onchange=()=>fillKSec();$('kSecName').onchange=()=>fillKSec();
-function renderSecs(){fillKSec();
+function renderSecs(){fillKSec();fillStSec();
   $('secList').innerHTML=secList.length?secList.map(x=>{const c=kids.filter(k=>k.section===x.name).length;
     return `<div class="card row"><div><strong>${esc(x.name)}</strong><div class="note">${c} ${c===1?'child':'children'}</div></div><button class="btn alt sm" data-sx="${x.id}">Remove</button></div>`}).join(''):'<p class="note">No grades or sections yet. Add one above.</p>';
   document.querySelectorAll('[data-sx]').forEach(b=>b.onclick=()=>{const x=secList.find(z=>z.id===b.dataset.sx);
@@ -741,21 +748,37 @@ function sfSumCsv(){const S=sfSum,rows=['Name,Sex,'+SFMO.map(m=>'Present '+m).jo
   .concat(S.rows.map(r=>`"${r.kid.name}",${r.kid.sex||''},${r.att.join(',')},${sumT(r.att)},${r.ab.join(',')},${sumT(r.ab)}`)).join('\n');
   navigator.clipboard&&navigator.clipboard.writeText(rows).then(()=>toast('Summary CSV copied'),()=>toast('Could not copy'))}
 
+// --- Add staff form: advisory grade/section choices (teachers only)
+function fillStSec(){
+  const n=secList.map(x=>x.name),sp=x=>{const a=x.split(' - ');return [a[0],a.slice(1).join(' - ')]},o=(v,t,on)=>`<option value="${esc(v)}"${on?' selected':''}>${esc(t)}</option>`;
+  let g=$('sGrade').value,sc=$('sSecName').value;
+  const grades=[...new Set(n.map(x=>sp(x)[0]))].sort(cmp);if(!grades.includes(g)){g='';sc=''}
+  const secs=[...new Set(n.filter(x=>sp(x)[0]===g).map(x=>sp(x)[1]).filter(Boolean))].sort(cmp);if(!secs.includes(sc))sc='';
+  $('sGrade').innerHTML=o('','None yet',!g)+grades.map(x=>o(x,x,x===g)).join('');
+  $('sSecName').innerHTML=o('','None yet',!sc)+secs.map(x=>o(x,x,x===sc)).join('');
+  $('sAdvWrap').hidden=$('sRole').value!=='adviser'}
+$('sGrade').onchange=fillStSec;$('sRole').onchange=fillStSec;
 // --- staff management (admins only)
 function renderStaff(){
   const me=auth.currentUser&&auth.currentUser.uid;
-  $('staffList').innerHTML=staffList.length?staffList.map(x=>`<div class="card"><div class="row"><strong>${esc(x.email||x.id)}</strong><span class="tag ${x.role==='admin'?'ok':''}">${({admin:'Admin',adviser:'Adviser',gate:'Gate staff'})[x.role]||'Staff'}</span></div>
+  $('staffList').innerHTML=staffList.length?staffList.map(x=>`<div class="card"><div class="row"><div><strong>${esc(x.name||x.email||x.id)}</strong>${x.name?`<div class="note">${esc(x.email||'')}</div>`:''}${x.phone||x.gender?`<div class="note">${[x.gender==='M'?'Male':x.gender==='F'?'Female':'',x.phone].filter(Boolean).map(esc).join(' | ')}</div>`:''}</div><span class="tag ${x.role==='admin'?'ok':''}">${({admin:'Admin',adviser:'Adviser',gate:'Gate staff'})[x.role]||'Staff'}</span></div>
    ${x.role==='adviser'?secBoxes(x):''}<div class="row" style="margin-top:8px">${x.email?`<button class="btn alt sm" data-r="${esc(x.email)}">Send password reset</button>`:'<span></span>'}${x.id===me?'<span class="note">You</span>':`<button class="btn alt sm" data-x="${x.id}">Remove</button>`}</div></div>`).join(''):'<p class="note">No staff yet.</p>';
   document.querySelectorAll('[data-sc]').forEach(c=>c.onchange=()=>{const id=c.dataset.sc,v=[...document.querySelectorAll('[data-sc="'+id+'"]:checked')].map(z=>z.value);updateDoc(doc(db,'staff',id),{sections:v}).then(()=>toast('Sections saved'),()=>toast('Could not save.'))});
   document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>sendPasswordResetEmail(auth,b.dataset.r).then(()=>toast('Reset email sent.'),()=>toast('Could not send the reset email.')));
   document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{if(confirm('Remove this staff member? They will lose access.'))deleteDoc(doc(db,'staff',b.dataset.x)).catch(()=>toast('Could not remove.'))})}
 $('addStaff').onclick=async()=>{
-  const email=$('sEmail').value.trim().toLowerCase(),pw=$('sPw').value;
+  const email=$('sEmail').value.trim().toLowerCase(),pw=$('sPw').value,last=$('sLast').value.trim(),first=$('sFirst').value.trim(),mid=$('sMid').value.trim(),
+    name=[last,first,mid].filter(Boolean).join(', '),phone=$('sPhone').value.trim(),gender=$('sGender').value,role=$('sRole').value;
+  if(!last||!first){toast('Enter the last and first name.');return}
   if(!email||pw.length<6){toast('Enter an email and a password of at least 6 characters.');return}
+  let sec='';
+  if(role==='adviser'){const g=$('sGrade').value,sc=$('sSecName').value;
+    if(g&&!sc&&secList.some(z=>z.name.startsWith(g+' - '))){toast('Choose the advisory section too.');return}
+    const cv=sc?g+' - '+sc:g;sec=cv&&secList.some(z=>z.name===cv)?cv:''}
   try{
     const c=await createUserWithEmailAndPassword(auth2,email,pw);
-    await setDoc(doc(db,'staff',c.user.uid),{role:$('sRole').value,email,sections:[]});
-    $('sEmail').value='';$('sPw').value='';toast('Staff added.');
+    await setDoc(doc(db,'staff',c.user.uid),{role,email,name,phone,gender,sections:sec?[sec]:[]});
+    ['sLast','sFirst','sMid','sEmail','sPhone','sPw'].forEach(id=>$(id).value='');$('sGender').value='';$('sGrade').value='';fillStSec();toast('Staff added.');
   }catch(e){toast(e.code==='auth/email-already-in-use'?'That email already has an account. Use a different email.':'Could not add staff ('+(e.code||e.message)+').')}
   finally{try{await signOut(auth2)}catch(x){}}};
 
