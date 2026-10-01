@@ -115,6 +115,8 @@ main:has(#tab-sf2.on){max-width:1180px}
 .fr{grid-template-columns:1.4em 20em minmax(0,1fr) 2.6em;font-size:.86em;gap:4px}.fr>span:nth-child(2){text-align:left;white-space:nowrap}
 .sfg>div.gl{min-width:0}.sf.sfsum{table-layout:fixed;width:100%}.sfsum td,.sfsum th{overflow-wrap:anywhere}.gr{min-width:0;box-sizing:border-box}.sfg{max-width:100%}.fr{min-width:0}
 .fr .frac{display:grid;justify-self:center;width:max-content;max-width:100%;text-align:center}.fr .frac b{padding:0 6px}.fr>span:last-child{text-align:left}
+/* narrow phones: seven tabs must fit in the bottom bar */
+@media screen and (max-width:520px){nav{gap:2px;padding-left:4px;padding-right:4px}nav button{flex:1 0 auto;font-size:.72rem;padding:10px 4px}}
 /* Manage tab sections */
 .seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.seg button{flex:1;min-width:0;padding:9px 6px;border:1.5px solid var(--line);border-radius:12px;background:transparent;color:var(--mute);font:inherit;font-size:.85rem;font-weight:500;cursor:pointer}
 .seg button[aria-selected="true"]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
@@ -165,6 +167,8 @@ button{cursor:pointer}
   #tab-tap>.zone{grid-column:1;grid-row:1}#tab-tap>#result{grid-column:1;grid-row:2}#tab-tap>.card{grid-column:2;grid-row:1/span 2;margin:0}
   /* Manage > Grades & sections */
   #mp-acc>.card{max-width:640px}
+  #tab-school.on{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+  #tab-school>.card{margin:0}
   .seg{max-width:620px}
 }
 @media screen and (min-width:1000px) and (hover:hover){
@@ -251,20 +255,29 @@ button{cursor:pointer}
   <div id="logList"></div>
 </section>
 
-<section id="tab-sf2">
-  <details class="card noprint"><summary><strong>School details</strong></summary>
-    <div class="frm c2"><div><label for="sfSchool">School name</label><input id="sfSchool" autocomplete="off"></div>
-    <div><label for="sfId">School ID</label><input id="sfId" autocomplete="off"></div></div>
-    <div class="frm c2"><div><label for="sfAdv">Class adviser</label><input id="sfAdv" autocomplete="off"></div>
-    <div><label for="sfYear">School year (e.g. 2026-2027)</label><input id="sfYear" autocomplete="off"></div></div>
+<section id="tab-school">
+  <div class="card">
+    <strong>School details</strong>
+    <p class="note">Used on every SF2 report. Saved on this device.</p>
+    <div class="frm c2"><div><label for="sfSchool">School name</label><input id="sfSchool" autocomplete="off"></div><div><label for="sfId">School ID</label><input id="sfId" autocomplete="off"></div></div>
     <div class="frm"><div><label for="sfHead">School head</label><input id="sfHead" autocomplete="off"></div></div>
-    <div class="frm c2"><div><label for="sfEnrM">Enrolment as of 1st Friday of the SY: boys (optional)</label><input id="sfEnrM" type="number" min="0" inputmode="numeric"></div>
-    <div><label for="sfEnrF">Enrolment as of 1st Friday of the SY: girls (optional)</label><input id="sfEnrF" type="number" min="0" inputmode="numeric"></div></div>
-    <div class="frm"><div><label for="sfCut">Late after (time)</label><input id="sfCut" type="time" value="07:30"></div></div>
+    <div class="frm c2"><div><label for="sfYear">School year (e.g. 2026-2027)</label><input id="sfYear" autocomplete="off"></div><div><label for="sfCut">Late after (time)</label><input id="sfCut" type="time" value="07:30"></div></div>
+  </div>
+  <div class="card">
+    <strong>Logos</strong>
+    <p class="note">Shown at the top of the SF2 report.</p>
     <label for="sfLogoFile">Logo, upper left (DepEd seal by default)</label>
     <div class="row"><img id="sfLogoPrev" alt="Logo left" style="width:48px;height:48px;object-fit:contain"><span><input type="file" id="sfLogoFile" accept="image/*"> <button class="btn alt sm" id="sfLogoReset" type="button">Use default</button></span></div>
     <label for="sfLogoFile2">Logo, upper right (DepEd logo by default)</label>
     <div class="row"><img id="sfLogoPrev2" alt="Logo right" style="width:96px;height:48px;object-fit:contain"><span><input type="file" id="sfLogoFile2" accept="image/*"> <button class="btn alt sm" id="sfLogoReset2" type="button">Use default</button></span></div>
+  </div>
+</section>
+
+<section id="tab-sf2">
+  <details class="card noprint"><summary><strong>Class details</strong></summary>
+    <p class="note">The school name, ID, head, school year, late time and logos are in the School tab.</p>
+    <div class="frm"><div><label for="sfAdv">Class adviser</label><input id="sfAdv" autocomplete="off"></div></div>
+    <div class="frm c2"><div><label for="sfEnrM">Enrolment as of 1st Friday of the SY: boys (optional)</label><input id="sfEnrM" type="number" min="0" inputmode="numeric"></div><div><label for="sfEnrF">Enrolment as of 1st Friday of the SY: girls (optional)</label><input id="sfEnrF" type="number" min="0" inputmode="numeric"></div></div>
   </details>
   <div class="card noprint">
     <label for="sfMonth">Month</label><input id="sfMonth" type="month">
@@ -363,6 +376,7 @@ button{cursor:pointer}
   <button role="tab" aria-selected="false" data-tab="kids">Children</button>
   <button role="tab" aria-selected="false" data-tab="log">Log</button>
   <button role="tab" aria-selected="false" data-tab="sf2">SF2</button>
+  <button role="tab" aria-selected="false" data-tab="school">School</button>
   <button role="tab" aria-selected="false" data-tab="manage" id="navManage" hidden>Manage</button>
   <button role="tab" aria-selected="false" data-tab="staff" id="navStaff" hidden>Staff</button>
 </nav>
@@ -418,7 +432,7 @@ onAuthStateChanged(auth,async user=>{
     if(!ok){$('loginMsg').textContent='This account is not a staff account. Check the staff document in Firestore: its Document ID must be the User UID of this account.';signOut(auth);return}$('loginMsg').textContent=''}
   $('login').hidden=!!user;$('app').hidden=!user;$('nav').hidden=!user;$('outBtn').hidden=!user;$('pwBtn').hidden=!user;if(!user)$('pwCard').hidden=true;$('navStaff').hidden=!admin;$('navManage').hidden=!admin;
   if(!user)return;
-  const vis={tap:myRole!=='adviser',kids:myRole==='admin'||myRole==='staff',log:true,sf2:myRole!=='gate'};
+  const vis={tap:myRole!=='adviser',kids:myRole==='admin'||myRole==='staff',log:true,sf2:myRole!=='gate',school:myRole!=='gate'};
   Object.entries(vis).forEach(([t,v])=>document.querySelector('nav [data-tab='+t+']').hidden=!v);
   showTab(myRole==='adviser'?'sf2':'tap');
   unsub.push(onSnapshot(collection(db,'sections'),s=>{secList=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>cmp(a.name,b.name));render();if(myRole==='admin')renderStaff()},()=>toast('Could not load the sections.')));
@@ -798,7 +812,7 @@ logoUp(1,SFLOGO);logoUp(2,SFLOGO2);
 // --- SF2 school-year summary: per learner, present and absent days for every month (Jul-Jun)
 const SFMO=['JUL','AUG','SEP','OCT','NOV','DEC','JAN','FEB','MAR','APR','MAY','JUN'],SFMN=[7,8,9,10,11,12,1,2,3,4,5,6];
 $('sfSum').onclick=async()=>{
-  const mm=String($('sfYear').value).match(/(\d{4})\D+(\d{4})/);if(!mm){toast('Enter the school year (e.g. 2026-2027) in School details first.');return}
+  const mm=String($('sfYear').value).match(/(\d{4})\D+(\d{4})/);if(!mm){toast('Enter the school year (e.g. 2026-2027) in the School tab first.');return}
   const a=+mm[1],b=+mm[2],sec=$('sfSec').value;
   if(myRole==='adviser'&&!mySecs.length){toast('No sections are assigned to you yet.');return}
   const secs=sec?[sec]:mySecs,bk={},adjs={};toast('Loading the school year...');
