@@ -287,6 +287,19 @@ body.modal-open{overflow:hidden}
     <p><button class="btn" id="addStaff">Add staff</button></p>
   </div>
   <div id="staffList"></div>
+  <div class="modal" id="stModal" role="dialog" aria-modal="true" aria-labelledby="stModalTitle" hidden>
+    <div class="modal-box">
+      <strong id="stModalTitle" class="mh">Edit staff details</strong>
+      <p class="note" id="stModalEmail"></p>
+      <div class="frm c3"><div><label for="seLast">Last name</label><input id="seLast" autocomplete="off"></div>
+        <div><label for="seFirst">First name</label><input id="seFirst" autocomplete="off"></div>
+        <div><label for="seMid">Middle name</label><input id="seMid" autocomplete="off"></div></div>
+      <div class="frm c2"><div><label for="sePhone">Contact number</label><input id="sePhone" inputmode="tel" placeholder="09xx xxx xxxx" autocomplete="off"></div>
+        <div><label for="seGender">Gender</label><select id="seGender"><option value="">Select...</option><option value="M">Male</option><option value="F">Female</option></select></div></div>
+      <p class="note">The email and role can't be changed here. Advisory sections are set with the checkboxes in the staff list.</p>
+      <p class="row" style="margin-top:12px"><button class="btn" id="seSave" type="button">Save</button><button class="btn alt" id="seCancel" type="button">Cancel</button></p>
+    </div>
+  </div>
 </section>
 </div>
 </main>
@@ -758,12 +771,31 @@ function fillStSec(){
   $('sSecName').innerHTML=o('','None yet',!sc)+secs.map(x=>o(x,x,x===sc)).join('');
   $('sAdvWrap').hidden=$('sRole').value!=='adviser'}
 $('sGrade').onchange=fillStSec;$('sRole').onchange=fillStSec;
+// --- Edit staff details (admins only)
+let stEditing=null;
+function openStEdit(id){const x=staffList.find(z=>z.id===id);if(!x){toast('Staff member not found.');return}
+  stEditing=id;const nm=splitName(x.name);
+  $('stModalEmail').textContent=x.email||'';
+  $('seLast').value=nm[0];$('seFirst').value=nm[1];$('seMid').value=nm[2];$('sePhone').value=x.phone||'';$('seGender').value=x.gender||'';
+  $('stModal').hidden=false;document.body.classList.add('modal-open');$('stModal').firstElementChild.scrollTop=0;setTimeout(()=>$('seLast').focus(),50)}
+function closeStEdit(){$('stModal').hidden=true;document.body.classList.remove('modal-open');stEditing=null}
+$('seCancel').onclick=closeStEdit;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('stModal').hidden)closeStEdit()});
+$('seSave').onclick=async()=>{
+  const last=$('seLast').value.trim(),first=$('seFirst').value.trim(),mid=$('seMid').value.trim();
+  if(!last||!first){toast('Enter the last and first name.');return}
+  $('seSave').disabled=true;
+  try{await updateDoc(doc(db,'staff',stEditing),{name:[last,first,mid].filter(Boolean).join(', '),phone:$('sePhone').value.trim(),gender:$('seGender').value});
+    closeStEdit();toast('Staff details saved.')}
+  catch(e){toast('Could not save ('+(e.code||'error')+').')}
+  finally{$('seSave').disabled=false}};
 // --- staff management (admins only)
 function renderStaff(){
   const me=auth.currentUser&&auth.currentUser.uid;
   $('staffList').innerHTML=staffList.length?staffList.map(x=>`<div class="card"><div class="row"><div><strong>${esc(x.name||x.email||x.id)}</strong>${x.name?`<div class="note">${esc(x.email||'')}</div>`:''}${x.phone||x.gender?`<div class="note">${[x.gender==='M'?'Male':x.gender==='F'?'Female':'',x.phone].filter(Boolean).map(esc).join(' | ')}</div>`:''}</div><span class="tag ${x.role==='admin'?'ok':''}">${({admin:'Admin',adviser:'Adviser',gate:'Gate staff'})[x.role]||'Staff'}</span></div>
-   ${x.role==='adviser'?secBoxes(x):''}<div class="row" style="margin-top:8px">${x.email?`<button class="btn alt sm" data-r="${esc(x.email)}">Send password reset</button>`:'<span></span>'}${x.id===me?'<span class="note">You</span>':`<button class="btn alt sm" data-x="${x.id}">Remove</button>`}</div></div>`).join(''):'<p class="note">No staff yet.</p>';
+   ${x.role==='adviser'?secBoxes(x):''}<div class="row" style="margin-top:8px"><span><button class="btn alt sm" data-se="${x.id}">Edit</button> ${x.email?`<button class="btn alt sm" data-r="${esc(x.email)}">Send password reset</button>`:''}</span>${x.id===me?'<span class="note">You</span>':`<button class="btn alt sm" data-x="${x.id}">Remove</button>`}</div></div>`).join(''):'<p class="note">No staff yet.</p>';
   document.querySelectorAll('[data-sc]').forEach(c=>c.onchange=()=>{const id=c.dataset.sc,v=[...document.querySelectorAll('[data-sc="'+id+'"]:checked')].map(z=>z.value);updateDoc(doc(db,'staff',id),{sections:v}).then(()=>toast('Sections saved'),()=>toast('Could not save.'))});
+  document.querySelectorAll('[data-se]').forEach(b=>b.onclick=()=>openStEdit(b.dataset.se));
   document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>sendPasswordResetEmail(auth,b.dataset.r).then(()=>toast('Reset email sent.'),()=>toast('Could not send the reset email.')));
   document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{if(confirm('Remove this staff member? They will lose access.'))deleteDoc(doc(db,'staff',b.dataset.x)).catch(()=>toast('Could not remove.'))})}
 $('addStaff').onclick=async()=>{
