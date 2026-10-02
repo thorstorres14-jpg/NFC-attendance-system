@@ -110,7 +110,7 @@ service cloud.firestore {
     match /settings/{id} {
       allow read: if isStaff() || (request.auth != null && request.auth.token.email_verified == true);
       allow create, update: if isAdmin() && id == 'school'
-        && request.resource.data.keys().hasOnly(['parentEdit', 'parentRequests', 'schoolName', 'schoolYear', 'schoolLogo', 'schoolId', 'schoolHead', 'lateAfter', 'lunchStart', 'lunchEnd', 'dismissTime', 'displayMode'])
+        && request.resource.data.keys().hasOnly(['parentEdit', 'parentRequests', 'schoolName', 'schoolYear', 'schoolLogo', 'schoolId', 'schoolHead', 'lateAfter', 'lunchStart', 'lunchEnd', 'dismissTime', 'displayMode', 'displayLayout'])
         && request.resource.data.get('parentEdit', false) is bool
         && request.resource.data.get('parentRequests', false) is bool
         // School name, year, ID, head, late-after time and logo (a small image as a data URL) shown on every device.
@@ -127,6 +127,7 @@ service cloud.firestore {
         && request.resource.data.get('dismissTime', '') is string
         && (request.resource.data.get('dismissTime', '') == '' || request.resource.data.get('dismissTime', '').matches('^([01][0-9]|2[0-3]):[0-5][0-9]$'))
         && request.resource.data.get('displayMode', 'full') in ['full', 'first', 'initials']
+        && request.resource.data.get('displayLayout', 'cards') in ['cards', 'list']
         && request.resource.data.get('schoolLogo', '') is string && request.resource.data.get('schoolLogo', '').size() <= 600000;
       // The two SF2 report logos, kept in their own document so the school record stays small.
       // An empty string means "use the default logo".
