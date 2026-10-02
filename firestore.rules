@@ -13,6 +13,8 @@ service cloud.firestore {
     function canTap()    { return isStaff() && me().role in ['admin', 'staff', 'gate']; }
     // School head: can read children, taps and attendance for every section, but never change anything.
     function isHead()    { return isStaff() && me().role == 'head'; }
+    // TV display account: can only read taps and photos for the hallway screen, never change anything.
+    function isDisplay() { return isStaff() && me().role == 'display'; }
     function myAdvised(sec) {
       return isStaff() && me().role == 'adviser' && sec in me().get('sections', []);
     }
@@ -36,7 +38,7 @@ service cloud.firestore {
     // Make the very first admin by hand: set role = "admin" on your own document in the console.
     match /staff/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
-      allow create: if isAdmin() && request.resource.data.role in ['adviser', 'gate', 'head', 'admin'];
+      allow create: if isAdmin() && request.resource.data.role in ['adviser', 'gate', 'head', 'admin', 'display'];
       // Admins can change a staff member's section assignment and personal details (never email or role).
       allow update: if isAdmin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sections', 'name', 'phone', 'gender'])
@@ -68,7 +70,7 @@ service cloud.firestore {
     }
 
     match /kids/{id} {
-      allow read: if canTap() || isHead() || myAdvised(resource.data.get('section', '')) || isParent(resource.data.parentEmails);
+      allow read: if canTap() || isHead() || isDisplay() || myAdvised(resource.data.get('section', '')) || isParent(resource.data.parentEmails);
       allow create, delete: if canManage();
       // Parents may change contact details only, and only while the school has the switch on.
       allow update: if canManage()
@@ -108,7 +110,7 @@ service cloud.firestore {
     match /settings/{id} {
       allow read: if isStaff() || (request.auth != null && request.auth.token.email_verified == true);
       allow create, update: if isAdmin() && id == 'school'
-        && request.resource.data.keys().hasOnly(['parentEdit', 'parentRequests', 'schoolName', 'schoolYear', 'schoolLogo', 'schoolId', 'schoolHead', 'lateAfter', 'lunchStart', 'lunchEnd', 'dismissTime'])
+        && request.resource.data.keys().hasOnly(['parentEdit', 'parentRequests', 'schoolName', 'schoolYear', 'schoolLogo', 'schoolId', 'schoolHead', 'lateAfter', 'lunchStart', 'lunchEnd', 'dismissTime', 'displayMode'])
         && request.resource.data.get('parentEdit', false) is bool
         && request.resource.data.get('parentRequests', false) is bool
         // School name, year, ID, head, late-after time and logo (a small image as a data URL) shown on every device.
@@ -124,6 +126,7 @@ service cloud.firestore {
         && (request.resource.data.get('lunchEnd', '') == '' || request.resource.data.get('lunchEnd', '').matches('^([01][0-9]|2[0-3]):[0-5][0-9]$'))
         && request.resource.data.get('dismissTime', '') is string
         && (request.resource.data.get('dismissTime', '') == '' || request.resource.data.get('dismissTime', '').matches('^([01][0-9]|2[0-3]):[0-5][0-9]$'))
+        && request.resource.data.get('displayMode', 'full') in ['full', 'first', 'initials']
         && request.resource.data.get('schoolLogo', '') is string && request.resource.data.get('schoolLogo', '').size() <= 600000;
       // The two SF2 report logos, kept in their own document so the school record stays small.
       // An empty string means "use the default logo".
@@ -134,7 +137,7 @@ service cloud.firestore {
     }
 
     match /log/{id} {
-      allow read: if canTap() || isHead() || myAdvised(resource.data.get('section', '')) || isParent(resource.data.parentEmails);
+      allow read: if canTap() || isHead() || isDisplay() || myAdvised(resource.data.get('section', '')) || isParent(resource.data.parentEmails);
       allow create: if canTap();
       allow update: if canManage()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parentEmails', 'name', 'section']);
