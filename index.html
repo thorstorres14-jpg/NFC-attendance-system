@@ -156,7 +156,7 @@ main:has(#tab-sf2.on){max-width:1180px}
 @media (min-width:900px){#mcList{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}}
 /* Staff > Teachers: list / card view + details */
 #staffList.stlist,#staffList.stgrid{display:grid;gap:8px}
-#staffList.stlist{grid-template-columns:minmax(0,1fr)}
+#staffList.stlist{grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr))}
 #staffList.stgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 #staffList.stgrid>.day,#staffList.stlist>.day{grid-column:1/-1}
 .stl,.stc{border:1px solid var(--line);border-radius:14px;background:var(--card);color:inherit;font:inherit;cursor:pointer;margin:0;min-width:0;text-align:left}
@@ -206,6 +206,11 @@ button{cursor:pointer}
   nav button{flex:none;max-width:none;text-align:left;padding:12px 16px;font-size:1rem}
   body:has(#nav:not([hidden])){padding-left:230px}
   main{max-width:1180px;padding:28px 36px 48px}
+  /* wide screens: card/list tabs use more of the screen (capped on ultrawide monitors) */
+  main:has(#tab-log.on),main:has(#tab-kids.on),main:has(#tab-staff.on),main:has(#tab-myclass.on),main:has(#tab-inside.on){max-width:1600px}
+  #inList,#inLunch{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px 12px;align-items:start}
+  #inList>.ihd,#inLunch>.ihd,#inList>p{grid-column:1/-1}
+  #inList>.card,#inLunch>.card{margin-bottom:0}
   #toast{left:calc(50% + 115px);bottom:24px}
   #login,#pwCard{max-width:420px;margin-left:auto;margin-right:auto}
   #login{margin-top:56px}
