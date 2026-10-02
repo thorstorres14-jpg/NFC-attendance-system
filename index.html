@@ -147,6 +147,20 @@ main:has(#tab-sf2.on){max-width:1180px}
 /* Manage tab sections */
 .seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.seg button{flex:1;min-width:0;padding:9px 6px;border:1.5px solid var(--line);border-radius:12px;background:transparent;color:var(--mute);font:inherit;font-size:.85rem;font-weight:500;cursor:pointer}
 .seg button[aria-selected="true"]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+/* Staff > Teachers: list / card view + details */
+#staffList.stlist,#staffList.stgrid{display:grid;gap:8px}
+#staffList.stlist{grid-template-columns:minmax(0,1fr)}
+#staffList.stgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+#staffList.stgrid>.day,#staffList.stlist>.day{grid-column:1/-1}
+.stl,.stc{border:1px solid var(--line);border-radius:14px;background:var(--card);color:inherit;font:inherit;cursor:pointer;margin:0;min-width:0;text-align:left}
+.stl{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px}
+.stl .meta{min-width:0;flex:1}.stl .meta strong,.stl .meta small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stl .cnt{flex:none;text-align:right;line-height:1.2}.stl .cnt small,.stc small,.stl .meta small{color:var(--mute);font-size:.78rem}.stl .cnt b{display:block;font-size:1.05rem}
+.stc{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;padding:14px 10px}
+.stc strong{overflow-wrap:anywhere;font-size:.9rem}.stc small{overflow-wrap:anywhere}
+.stl:hover,.stc:hover{border-color:var(--acc)}
+.stdrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.stdrow b{font-size:1.05rem}
 .who{display:flex;gap:10px;align-items:flex-start;min-width:0}.who>div,.who>strong{min-width:0}
 .av{width:44px;height:44px;border-radius:50%;object-fit:cover;background:var(--line);color:var(--mute);display:inline-grid;place-items:center;font-weight:600;font-size:.9rem;flex:none;overflow:hidden}
 .av.lg{width:72px;height:72px;font-size:1.6rem}
@@ -587,7 +601,19 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
     <div><label for="stSec">Section</label><select id="stSec"></select></div></div>
   <div class="row" style="margin:8px 0"><span class="note" id="stCount"></span><button class="btn alt sm" id="stClear" type="button" hidden>Clear filters</button></div>
   </div>
+  <div class="seg" id="stViewBar" role="tablist" aria-label="Teacher view" style="max-width:220px" hidden>
+    <button type="button" role="tab" aria-selected="true" data-stv="list">List</button>
+    <button type="button" role="tab" aria-selected="false" data-stv="card">Cards</button>
+  </div>
   <div id="staffList"></div>
+  <div class="modal" id="stdModal" role="dialog" aria-modal="true" aria-labelledby="stdName" hidden>
+    <div class="modal-box">
+      <div class="who" style="align-items:center;margin-bottom:10px"><span id="stdAv"></span><div><strong id="stdName" class="mh" style="margin:0"></strong><div class="note" id="stdSub"></div></div></div>
+      <div id="stdBody"></div>
+      <p class="row" style="margin-top:12px"><span><button class="btn alt sm" id="stdEdit" type="button">Edit details</button> <button class="btn alt sm" id="stdReset" type="button">Send password reset</button></span><button class="btn alt sm" id="stdRemove" type="button">Remove</button></p>
+      <p class="row" style="margin-top:8px"><button class="btn" id="stdClose" type="button">Close</button></p>
+    </div>
+  </div>
   <div class="modal" id="stModal" role="dialog" aria-modal="true" aria-labelledby="stModalTitle" hidden>
     <div class="modal-box">
       <strong id="stModalTitle" class="mh">Edit staff details</strong>
@@ -686,7 +712,7 @@ onAuthStateChanged(auth,async user=>{
   const adv=myRole==='adviser';
   if(adv&&!mySecs.length){kids=[];logs=[];render()}
   else{const sf=adv?[where('section','in',mySecs)]:[];
-  unsub.push(onSnapshot(adv?query(collection(db,'kids'),...sf):collection(db,'kids'),s=>{kids=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>toast('Could not load the list of children.')));
+  unsub.push(onSnapshot(adv?query(collection(db,'kids'),...sf):collection(db,'kids'),s=>{kids=s.docs.map(d=>({id:d.id,...d.data()}));render();if(myRole==='admin'&&staffList.length)renderStaff()},()=>toast('Could not load the list of children.')));
   unsub.push(onSnapshot(query(collection(db,'log'),...sf,where('time','>=',start.getTime()),orderBy('time')),s=>{logs=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>toast('Could not load the log. A Firestore index may be needed: open the browser console (F12) and click the link.')))}
   if(admin)unsub.push(onSnapshot(query(collection(db,'broadcasts'),orderBy('time','desc')),s=>{bcList=s.docs.slice(0,10).map(d=>({id:d.id,...d.data()}));renderBc()},()=>toast('Could not load past broadcasts.')));
   if(admin)unsub.push(onSnapshot(doc(db,'settings','school'),s=>{const d=s.exists()?s.data():{};$('parentEditChk').checked=!!d.parentEdit;$('parentReqChk').checked=!!d.parentRequests},()=>{}));
@@ -1445,6 +1471,44 @@ function viewStaff(){
     list.forEach(x=>(G[stRoleOf(x)]=G[stRoleOf(x)]||[]).push(x));
     [...STORDER,...Object.keys(G).filter(k=>!STORDER.includes(k))].filter(k=>G[k]).forEach(k=>{out.push({_h:`${stRoleName(k)} (${G[k].length})`});G[k].forEach(x=>out.push(x))})}
   return out}
+// --- Teachers: list / card view and a details popup
+let stView='list',stdOpen=null,stdEditOpen=false;
+try{stView=localStorage.getItem('stView')==='card'?'card':'list'}catch(e){}
+const kidsOfSec=n=>kids.filter(k=>k.section===n),
+  stSummary=x=>stSecs(x).length?[...stSecs(x)].sort(cmp).join(', '):'No section',
+  stTotal=x=>stSecs(x).reduce((t,n)=>t+kidsOfSec(n).length,0);
+function stMode(){
+  const tm=$('stRole').value==='adviser';
+  $('staffList').className=tm?(stView==='card'?'stgrid':'stlist'):'';
+  $('stViewBar').hidden=!tm;
+  document.querySelectorAll('[data-stv]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.stv===stView)))}
+function stRows(sv,staffCard){
+  const tm=$('stRole').value==='adviser',byRole=$('stGroup').value==='role';
+  const item=x=>stView==='card'
+    ?`<button type="button" class="stc" data-std="${x.id}">${av(x,true)}<strong>${esc(x.name||x.email||x.id)}</strong><small>${esc(stSummary(x))}</small><span class="tag">${stTotal(x)} students</span></button>`
+    :`<button type="button" class="stl" data-std="${x.id}">${av(x)}<span class="meta"><strong>${esc(x.name||x.email||x.id)}</strong><small>${esc(stSummary(x))}</small></span><span class="cnt"><b>${stTotal(x)}</b><small>students</small></span></button>`;
+  return sv.filter(x=>!(tm&&byRole&&x._h)).map(x=>x._h?`<div class="day">${esc(x._h)}</div>`:tm?item(x):staffCard(x)).join('')}
+document.querySelectorAll('[data-stv]').forEach(b=>b.onclick=()=>{stView=b.dataset.stv;try{localStorage.setItem('stView',stView)}catch(e){}renderStaff()});
+function openStd(id){stdOpen=id;stdEditOpen=false;renderStd();$('stdModal').hidden=false;document.body.classList.add('modal-open');$('stdModal').firstElementChild.scrollTop=0}
+function closeStd(){$('stdModal').hidden=true;document.body.classList.remove('modal-open');stdOpen=null}
+function renderStd(){
+  const x=staffList.find(z=>z.id===stdOpen);if(!x){closeStd();return}
+  const me=auth.currentUser&&auth.currentUser.uid,secs=[...stSecs(x)].sort(cmp);
+  $('stdAv').innerHTML=av(x,true);$('stdName').textContent=x.name||x.email||x.id;
+  $('stdSub').textContent=[x.email,stRoleName(stRoleOf(x))].filter(Boolean).join(' | ');
+  const info=[x.gender==='M'?'Male':x.gender==='F'?'Female':'',x.phone].filter(Boolean);
+  const rows=secs.map(n=>{const ks=kidsOfSec(n),m=ks.filter(k=>k.sex==='M').length,f=ks.filter(k=>k.sex==='F').length,c=ks.filter(k=>k.uid).length;
+    return `<div class="stdrow"><span><strong>${esc(n)}</strong><div class="note">${m} boys | ${f} girls | ${c} with card</div></span><b>${ks.length}</b></div>`}).join('');
+  $('stdBody').innerHTML=(info.length?`<div class="note" style="margin-bottom:8px">${info.map(esc).join(' | ')}</div>`:'')
+    +(x.role==='adviser'?`<strong>Advisory classes</strong>${secs.length?`<div style="margin-top:6px">${rows}<div class="stdrow"><span><strong>Total students</strong></span><b>${stTotal(x)}</b></div></div>`:'<p class="note">No advisory section assigned yet.</p>'}
+    <details id="stdEd" style="margin-top:10px"${stdEditOpen?' open':''}><summary class="note" style="cursor:pointer">Edit sections</summary>${secBoxes(x)}</details>`:'');
+  const d=$('stdEd');if(d)d.ontoggle=()=>{stdEditOpen=d.open};
+  $('stdBody').querySelectorAll('[data-sc]').forEach(c=>c.onchange=()=>{const id=c.dataset.sc,v=[...document.querySelectorAll('[data-sc="'+id+'"]:checked')].map(z=>z.value);updateDoc(doc(db,'staff',id),{sections:v}).then(()=>toast('Sections saved'),()=>toast('Could not save.'))});
+  $('stdEdit').onclick=()=>{const id=x.id;closeStd();openStEdit(id)};
+  $('stdReset').hidden=!x.email;$('stdReset').onclick=()=>sendPasswordResetEmail(auth,x.email).then(()=>toast('Reset email sent.'),()=>toast('Could not send the reset email.'));
+  $('stdRemove').hidden=x.id===me;$('stdRemove').onclick=()=>{if(confirm('Remove this staff member? They will lose access.'))deleteDoc(doc(db,'staff',x.id)).then(closeStd,()=>toast('Could not remove.'))}}
+$('stdClose').onclick=closeStd;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('stdModal').hidden)closeStd()});
 const STTAB={admin:'Admin',head:'Head',adviser:'Teachers',gate:'Gate',display:'TV'};
 function renderStaffTabs(){
   const cur=$('stRole').value,cnt=r=>staffList.filter(x=>stRoleOf(x)===r).length,
@@ -1457,9 +1521,11 @@ function renderStaff(){
   const staffCard=x=>`<div class="card"><div class="row"><div class="who">${av(x)}<div><strong>${esc(x.name||x.email||x.id)}</strong>${x.name?`<div class="note">${esc(x.email||'')}</div>`:''}${x.phone||x.gender?`<div class="note">${[x.gender==='M'?'Male':x.gender==='F'?'Female':'',x.phone].filter(Boolean).map(esc).join(' | ')}</div>`:''}</div></div><span class="tag ${x.role==='admin'?'ok':''}">${({admin:'Admin',adviser:'Adviser',gate:'Gate staff',head:'School head'})[x.role]||'Staff'}</span></div>
    ${x.role==='adviser'?secBoxes(x):''}<div class="row" style="margin-top:8px"><span><button class="btn alt sm" data-se="${x.id}">Edit</button> ${x.email?`<button class="btn alt sm" data-r="${esc(x.email)}">Send password reset</button>`:''}</span>${x.id===me?'<span class="note">You</span>':`<button class="btn alt sm" data-x="${x.id}">Remove</button>`}</div></div>`;
   fillStaffFilter();renderStaffTabs();const sv=viewStaff();
-  $('staffList').innerHTML=staffList.length?(sv.length?sv.map(x=>x._h?`<div class="day">${esc(x._h)}</div>`:staffCard(x)).join(''):'<p class="note">No staff match this filter.</p>'):'<p class="note">No staff yet.</p>';
+  stMode();$('staffList').innerHTML=staffList.length?(sv.length?stRows(sv,staffCard):'<p class="note">No staff match this filter.</p>'):'<p class="note">No staff yet.</p>';
   document.querySelectorAll('[data-sc]').forEach(c=>c.onchange=()=>{const id=c.dataset.sc,v=[...document.querySelectorAll('[data-sc="'+id+'"]:checked')].map(z=>z.value);updateDoc(doc(db,'staff',id),{sections:v}).then(()=>toast('Sections saved'),()=>toast('Could not save.'))});
   document.querySelectorAll('[data-se]').forEach(b=>b.onclick=()=>openStEdit(b.dataset.se));
+  document.querySelectorAll('[data-std]').forEach(b=>b.onclick=()=>openStd(b.dataset.std));
+  if(stdOpen&&!$('stdModal').hidden)renderStd();
   document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>sendPasswordResetEmail(auth,b.dataset.r).then(()=>toast('Reset email sent.'),()=>toast('Could not send the reset email.')));
   document.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{if(confirm('Remove this staff member? They will lose access.'))deleteDoc(doc(db,'staff',b.dataset.x)).catch(()=>toast('Could not remove.'))})}
 $('stQ').oninput=()=>renderStaff();
