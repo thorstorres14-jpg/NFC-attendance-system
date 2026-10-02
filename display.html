@@ -124,7 +124,8 @@ const firebaseConfig={
   projectId:"school-smart-attendance-52cbf",
   appId:"1:1069393649004:web:dafcf9afdf265f9c83e749"
 };
-const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+// Own app name = own sign-in session, so the TV account never mixes with the staff app's login in the same browser.
+const app=initializeApp(firebaseConfig,'tvdisplay'),auth=getAuth(app),db=getFirestore(app);
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
