@@ -306,6 +306,18 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
 @media screen and (max-width:520px){.kd-dl{grid-template-columns:minmax(0,1fr);gap:2px}.kd-dl dd{margin-bottom:10px}}
 .kd-act{display:flex;gap:8px;flex-wrap:wrap}
 .kd-del{margin-left:auto;color:var(--bad)}
+
+/* ---------- Log tab: compact numbered list, several columns on wide screens ---------- */
+#logList.lg{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px 10px;align-items:stretch}
+#logList .lr{display:flex;align-items:center;gap:8px;padding:6px 10px 6px 8px;margin:0;border-radius:12px}
+.lr .ln{flex:0 0 2.2em;text-align:right;font-size:.82rem;color:var(--mute);font-variant-numeric:tabular-nums}
+.lr .av{width:38px;height:38px;font-size:.8rem}
+.lr .lm{flex:1 1 auto;min-width:0;line-height:1.2}
+.lr .lm strong{display:block;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lr .lm small{display:block;font-size:.78rem;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lr .lt{flex:0 0 auto;text-align:right;font-size:.82rem;font-variant-numeric:tabular-nums;line-height:1.2}
+.lr .lt b{display:block;font-size:.78rem;letter-spacing:.04em}
+.lt-in b,.lt-back b{color:#0f7a4d}.lt-out b{color:#96600a}.lt-lunch b{color:#b0391b}
 </style>
 </head>
 <body>
@@ -418,7 +430,7 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
 <section id="tab-log">
   <div class="row" style="margin-bottom:10px"><strong id="logHead">Today</strong><button class="btn alt sm" id="csvBtn">Copy as CSV</button></div>
   <div class="sr"><input id="logQ" type="search" placeholder="Search name" aria-label="Search today's log" autocomplete="off"><button class="btn alt sm" id="logClear" type="button" hidden>Clear</button></div>
-  <div id="logList"></div>
+  <div id="logList" class="lg"></div>
 </section>
 
 <section id="tab-inside">
@@ -441,6 +453,7 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
     <div class="frm c2"><div><label for="sfDismiss">Dismissal check (time)</label><input id="sfDismiss" type="time" value="17:00"></div></div>
     <p class="note">From this time on, the Inside tab warns about children who are still inside school. Clear the time to turn the warning off.</p>
     <div class="frm"><div><label for="sfDisplay">TV display (/display.html): what the hallway screen shows</label><select id="sfDisplay"><option value="full">Full name and photo</option><option value="first">First name and photo only</option><option value="initials">Initials only (no photo)</option></select></div></div>
+    <div class="frm"><div><label for="sfLayout">TV display layout</label><select id="sfLayout"><option value="cards">Cards (10 big photo cards, easy to read from far)</option><option value="list">List (30 children at once, one row each)</option></select></div></div>
     <p class="note">Choose what your parents agreed to under the Data Privacy Act.</p>
   </div>
   <div class="card">
@@ -821,7 +834,8 @@ function render(){fillSec();renderSecs();renderInside();
   const all=[...logs].reverse(),lq=$('logQ').value,t=all.filter(l=>qMatch(l.name,lq));
   $('logClear').hidden=!normQ(lq);
   $('logHead').textContent='Today ('+(normQ(lq)?t.length+' of '+all.length:t.length)+')';
-  $('logList').innerHTML=t.length?t.map(l=>`<div class="card row"><div class="who" style="align-items:center">${av(kids.find(k=>k.id===l.kidId)||{name:l.name})}<strong>${esc(l.name)}</strong></div><span class="tag ${AT(l.type)?'ok':''}">${tl(l.type)} ${fmt(l.time)}</span></div>`).join(''):`<p class="note">${all.length?'No names match your search.':'No taps yet today.'}</p>`}
+  const num=new Map(all.map((l,i)=>[l.id,all.length-i])),LB={in:'IN',out:'OUT',lunch:'LUNCH',back:'BACK'};
+  $('logList').innerHTML=t.length?t.map(l=>`<div class="card lr"><span class="ln">${num.get(l.id)}</span>${av(kids.find(k=>k.id===l.kidId)||{name:l.name})}<div class="lm"><strong>${esc(l.name)}</strong><small>${esc(l.section||'')}</small></div><span class="lt lt-${LB[l.type]?l.type:'out'}"><b>${LB[l.type]||'OUT'}</b>${fmt(l.time)}</span></div>`).join(''):`<p class="note">${all.length?'No names match your search.':'No taps yet today.'}</p>`}
 // --- Inside tab: who is still inside school, with a warning once the dismissal check time is reached
 const t12=v=>{const [h,m]=String(v).split(':').map(Number);return (h%12||12)+':'+String(m).padStart(2,'0')+' '+(h<12?'AM':'PM')};
 function renderInside(){
@@ -1188,14 +1202,16 @@ function applySchool(d,admin){
   SCHMAP.forEach(([k,i])=>{if(k in d)$(i).value=d[k]||(k==='lateAfter'?'07:30':'');else if(admin){const v=schoolLocal()[k];if(v)miss[k]=v}});
   if('schoolLogo' in d)schLogo=d.schoolLogo||'';else if(admin&&schLogo)miss.schoolLogo=schLogo;
   $('sfDisplay').value=['full','first','initials'].includes(d.displayMode)?d.displayMode:'full';
+  $('sfLayout').value=d.displayLayout==='list'?'list':'cards';
   cacheLogo();$('sfSchool').onchange();renderBrand();lockSchool();
   if(admin&&Object.keys(miss).length)pushSchool(miss,'School details are now shared with every device')}
 function lockSchool(){
   const ro=myRole!=='admin'&&(schoolShared||myRole==='head');
-  ['sfSchool','sfYear','sfId','sfHead','sfCut','sfLunchA','sfLunchB','sfDismiss','sfDisplay','schLogoFile','schLogoDel'].forEach(i=>{$(i).disabled=ro});
+  ['sfSchool','sfYear','sfId','sfHead','sfCut','sfLunchA','sfLunchB','sfDismiss','sfDisplay','sfLayout','schLogoFile','schLogoDel'].forEach(i=>{$(i).disabled=ro});
   $('schNote').textContent=ro?'Used on every SF2 report. The school details and logos are set by the admin for all devices.':!schoolShared?'Used on every SF2 report. Saved on this device.':'Used on every SF2 report. The school details and logos are shared with every device.'}
 ['sfSchool','sfYear','sfId','sfHead','sfCut','sfLunchA','sfLunchB','sfDismiss'].forEach(i=>$(i).addEventListener('change',()=>{if(myRole==='admin')pushSchool(schoolLocal(),'School details saved for all devices')}));
 $('sfDisplay').addEventListener('change',()=>{if(myRole==='admin')pushSchool({displayMode:$('sfDisplay').value},'TV display setting saved')});
+$('sfLayout').addEventListener('change',()=>{if(myRole==='admin')pushSchool({displayLayout:$('sfLayout').value},'TV layout saved')});
 $('heroSet').onclick=()=>{showTab('school');$('sfSchool').focus()};
 ['sfSchool','sfYear'].forEach(i=>$(i).addEventListener('input',renderBrand));
 renderBrand();
