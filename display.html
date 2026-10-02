@@ -89,7 +89,7 @@ main{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:repeat(5,1fr)
 .track .bn{color:var(--gold)}.track .bd{color:var(--gold);opacity:.7}
 @keyframes scroll{to{transform:translateX(-50%)}}
 
-main.list{grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(10,1fr);gap:1.2vh 1.1vw}
+main.list{grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(10,1fr);grid-auto-flow:column;gap:1.2vh 1.1vw}
 .row{--c:var(--in);--cd:var(--ind);min-height:0;display:flex;align-items:center;gap:1vw;background:#fff;color:var(--ink);border-radius:1.8vh;padding:.7vh 1vw .7vh .7vh;border-left:1vh solid var(--c);animation:pop .5s cubic-bezier(.2,.9,.3,1.2)}
 .row.out{--c:var(--out);--cd:var(--outd)}.row.lunch{--c:var(--lunch);--cd:var(--lunchd)}.row.back{--c:var(--back);--cd:var(--backd)}
 .row.latest{box-shadow:0 0 3vh var(--c);outline:.35vh solid var(--c)}
