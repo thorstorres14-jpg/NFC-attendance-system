@@ -147,6 +147,13 @@ main:has(#tab-sf2.on){max-width:1180px}
 /* Manage tab sections */
 .seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.seg button{flex:1;min-width:0;padding:9px 6px;border:1.5px solid var(--line);border-radius:12px;background:transparent;color:var(--mute);font:inherit;font-size:.85rem;font-weight:500;cursor:pointer}
 .seg button[aria-selected="true"]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+/* My Class (adviser home) */
+.mctiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:8px;margin:10px 0}
+.mctile{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 6px;border:1.5px solid var(--line);border-radius:14px;background:var(--card);color:var(--mute);font:inherit;font-size:.78rem;cursor:pointer}
+.mctile b{font-size:1.4rem;color:var(--ink,inherit);line-height:1.1}
+.mctile[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}.mctile[aria-pressed="true"] b{color:var(--acc-ink)}
+#mcList{display:grid;gap:8px}
+@media (min-width:900px){#mcList{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}}
 /* Staff > Teachers: list / card view + details */
 #staffList.stlist,#staffList.stgrid{display:grid;gap:8px}
 #staffList.stlist{grid-template-columns:minmax(0,1fr)}
@@ -452,6 +459,24 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
   <div id="logList" class="lg"></div>
 </section>
 
+<section id="tab-myclass">
+  <div class="seg" id="mcTabs" role="tablist" aria-label="My sections" hidden></div>
+  <p class="note" id="mcNone" hidden>No section is assigned to you yet. Please ask the admin to assign your class.</p>
+  <div id="mcWrap" hidden>
+    <div id="mcHead"></div>
+    <div class="mctiles" id="mcTiles"></div>
+    <div class="sr"><input id="mcQ" type="search" placeholder="Search student name" aria-label="Search student" autocomplete="off"></div>
+    <div id="mcList"></div>
+  </div>
+  <div class="modal" id="mcModal" role="dialog" aria-modal="true" aria-labelledby="mcName" hidden>
+    <div class="modal-box">
+      <div class="who" style="align-items:center;margin-bottom:8px"><span id="mcAv"></span><div><strong id="mcName" class="mh" style="margin:0"></strong><div class="kd-tags" id="mcTags" style="margin-top:4px"></div></div></div>
+      <dl class="kd-dl" id="mcInfo"></dl>
+      <p class="row" style="margin-top:12px"><button class="btn" id="mcClose" type="button">Close</button></p>
+    </div>
+  </div>
+</section>
+
 <section id="tab-inside">
   <div id="inWarn" class="warn" hidden></div>
   <div class="row" style="margin-bottom:6px"><strong id="inHead">Inside school</strong></div>
@@ -634,6 +659,7 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
 
 <nav role="tablist" id="nav" hidden>
   <div class="navbrand" aria-hidden="true"><img id="navLogo" alt="" hidden><span class="mono" id="navMono" aria-hidden="true"></span><span id="navName">Tap-In Attendance</span></div>
+  <button role="tab" aria-selected="false" data-tab="myclass" hidden>My Class</button>
   <button role="tab" aria-selected="true" data-tab="tap">Tap</button>
   <button role="tab" aria-selected="false" data-tab="kids">Children</button>
   <button role="tab" aria-selected="false" data-tab="log">Log</button>
@@ -700,11 +726,11 @@ onAuthStateChanged(auth,async user=>{
     if(!ok){$('loginMsg').textContent='This account is not a staff account. Check the staff document in Firestore: its Document ID must be the User UID of this account.';signOut(auth);return}$('loginMsg').textContent=''}
   $('login').hidden=!!user;document.body.classList.toggle('is-login',!user);$('app').hidden=!user;$('nav').hidden=!user;$('outBtn').hidden=!user;$('pwBtn').hidden=!user;if(!user)$('pwCard').hidden=true;$('navStaff').hidden=!admin;$('navManage').hidden=!admin;
   if(!user)return;
-  const vis={tap:myRole!=='adviser'&&myRole!=='head',kids:myRole==='admin'||myRole==='staff',log:true,inside:true,visitors:myRole!=='adviser',sf2:myRole!=='gate',school:myRole!=='gate'};
+  const vis={myclass:myRole==='adviser',tap:myRole!=='adviser'&&myRole!=='head',kids:myRole==='admin'||myRole==='staff',log:true,inside:true,visitors:myRole!=='adviser',sf2:myRole!=='gate',school:myRole!=='gate'};
   Object.entries(vis).forEach(([t,v])=>document.querySelector('nav [data-tab='+t+']').hidden=!v);
   document.body.classList.toggle('role-head',myRole==='head');
   lockSchool();lockSfLogos(myRole==='head');
-  showTab(myRole==='adviser'?'sf2':myRole==='head'?'inside':'tap');
+  showTab(myRole==='adviser'?'myclass':myRole==='head'?'inside':'tap');
   unsub.push(onSnapshot(doc(db,'settings','school'),s=>applySchool(s.exists()?s.data():{},admin),()=>{}));
   unsub.push(onSnapshot(doc(db,'settings','sf2logos'),s=>applySfLogos(s.exists()?s.data():{},admin,s.exists()),()=>{}));
   unsub.push(onSnapshot(collection(db,'sections'),s=>{secList=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>cmp(a.name,b.name));render();if(myRole==='admin')renderStaff()},()=>toast('Could not load the sections.')));
@@ -964,7 +990,7 @@ $('kdCard').onclick=()=>{if(!kdId)return;assigning=kdId;toast('Tap the new card 
 $('kdEdit').onclick=()=>{const k=kids.find(x=>x.id===kdId);if(!k)return;closeKd();openKid(k)};
 $('kdDel').onclick=()=>{if(!kdId||!confirm('Remove this child?'))return;const id=kdId;closeKd();deleteDoc(doc(db,'kids',id)).catch(()=>toast('Could not remove.'))};
 
-function render(){fillSec();renderSecs();renderInside();
+function render(){fillSec();renderSecs();renderInside();renderMyClass();
   fillSim();
   fillKidFilter();const kview=viewKids();
   $('kidList').innerHTML=kids.length?(kview.length?kview.map(k=>k._h?`<div class="day">${esc(k._h)}</div>`:kTile(k)).join(''):'<p class="note">No children match this filter.</p>'):'<p class="note">No children yet. Tap "+ Add child" above.</p>';
@@ -1471,6 +1497,45 @@ function viewStaff(){
     list.forEach(x=>(G[stRoleOf(x)]=G[stRoleOf(x)]||[]).push(x));
     [...STORDER,...Object.keys(G).filter(k=>!STORDER.includes(k))].filter(k=>G[k]).forEach(k=>{out.push({_h:`${stRoleName(k)} (${G[k].length})`});G[k].forEach(x=>out.push(x))})}
   return out}
+// --- My Class: the adviser's home tab (own sections, today's status per student)
+let mcSec='',mcFilter='all',mcId=null;
+function mcStatus(l){return !l?'none':AT(l.type)?'in':l.type==='lunch'?'lunch':'out'}
+function renderMyClass(){
+  if(myRole!=='adviser')return;
+  const secs=[...mySecs].sort(cmp);
+  $('mcNone').hidden=!!secs.length;$('mcWrap').hidden=!secs.length;$('mcTabs').hidden=secs.length<2;
+  if(!secs.length)return;
+  if(!secs.includes(mcSec))mcSec=secs[0];
+  $('mcTabs').innerHTML=secs.map(n=>`<button type="button" role="tab" aria-selected="${n===mcSec}" data-mcs="${esc(n)}">${esc(n)}</button>`).join('');
+  const last={};[...logs].sort((a,b)=>a.time-b.time).forEach(l=>{last[l.kidId]=l});
+  const ks=kids.filter(k=>k.section===mcSec).sort((a,b)=>cmp(a.name||'',b.name||'')),
+    st=k=>mcStatus(last[k.id]),cnt=t=>ks.filter(k=>st(k)===t).length,
+    m=ks.filter(k=>k.sex==='M').length,f=ks.filter(k=>k.sex==='F').length;
+  $('mcHead').innerHTML=`<div class="row"><strong>${esc(mcSec)}</strong><span class="note">${new Date().toLocaleDateString('en-PH',{weekday:'short',month:'short',day:'numeric'})}</span></div><div class="note">${ks.length} students | ${m} boys | ${f} girls</div>`;
+  $('mcTiles').innerHTML=[['all','All',ks.length],['in','Inside',cnt('in')],['lunch','Lunch',cnt('lunch')],['out','Left',cnt('out')],['none','No tap yet',cnt('none')]]
+    .map(t=>`<button type="button" class="mctile" data-mcf="${t[0]}" aria-pressed="${t[0]===mcFilter}"><b>${t[2]}</b>${t[1]}</button>`).join('');
+  const q=$('mcQ').value,list=ks.filter(k=>(mcFilter==='all'||st(k)===mcFilter)&&qMatch(k.name,q));
+  const tag=k=>{const l=last[k.id],s=st(k);return s==='none'?'<span class="tag no">No tap yet</span>':`<span class="tag ${s==='in'?'ok':''}">${s==='in'?'Inside':s==='lunch'?'Lunch':'Left'} ${fmt(l.time)}</span>`};
+  $('mcList').innerHTML=ks.length?(list.length?list.map(k=>`<button type="button" class="stl" data-mck="${k.id}">${av(k)}<span class="meta"><strong>${esc(k.name)}</strong><small>${esc(k.parent||(k.sex==='M'?'Male':k.sex==='F'?'Female':''))}</small></span>${tag(k)}</button>`).join(''):'<p class="note">No students match.</p>'):'<p class="note">No students in this section yet.</p>';
+  document.querySelectorAll('[data-mck]').forEach(b=>b.onclick=()=>openMc(b.dataset.mck));
+  if(!$('mcModal').hidden)fillMc()}
+function fillMc(){
+  const k=kids.find(x=>x.id===mcId);if(!k){closeMc();return}
+  const mine=logs.filter(l=>l.kidId===k.id).sort((a,b)=>a.time-b.time),tel=n=>`<a href="tel:${esc(n)}">${esc(n)}</a>`,
+    rows=[['Today',esc(mine.length?mine.map(l=>tl(l.type)+' '+fmt(l.time)).join(', '):'No tap yet today')],['Parent / guardian',esc(k.parent||'Not set')],['Mobile number',k.phone?tel(k.phone):'Not set']];
+  if(k.altName||k.altPhone)rows.push(['Alternate contact',[esc(k.altName||''),k.altPhone?tel(k.altPhone):''].filter(Boolean).join('<br>')]);
+  if(k.lrn)rows.push(['LRN',esc(k.lrn)]);
+  if(k.birthdate){const bp=k.birthdate.split('-').map(Number);if(bp.length===3&&bp[0])rows.push(['Birthdate',esc(new Date(bp[0],bp[1]-1,bp[2]).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'}))])}
+  $('mcAv').innerHTML=av(k,true);$('mcName').textContent=k.name;
+  $('mcTags').innerHTML=`<span class="tag">${k.sex==='M'?'Male':k.sex==='F'?'Female':'Sex not set'}</span><span class="tag ${k.uid?'ok':'no'}">${k.uid?'Has card':'No card'}</span>`;
+  $('mcInfo').innerHTML=rows.map(r=>`<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join('')}
+function openMc(id){mcId=id;fillMc();$('mcModal').hidden=false;document.body.classList.add('modal-open');$('mcModal').firstElementChild.scrollTop=0}
+function closeMc(){$('mcModal').hidden=true;document.body.classList.remove('modal-open');mcId=null}
+$('mcClose').onclick=closeMc;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('mcModal').hidden)closeMc()});
+$('mcTabs').onclick=e=>{const b=e.target.closest('[data-mcs]');if(!b)return;mcSec=b.dataset.mcs;mcFilter='all';$('mcQ').value='';renderMyClass()};
+$('mcTiles').onclick=e=>{const b=e.target.closest('[data-mcf]');if(!b)return;mcFilter=b.dataset.mcf;renderMyClass()};
+$('mcQ').oninput=()=>renderMyClass();
 // --- Teachers: list / card view and a details popup
 let stView='list',stdOpen=null,stdEditOpen=false;
 try{stView=localStorage.getItem('stView')==='card'?'card':'list'}catch(e){}
