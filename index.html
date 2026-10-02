@@ -329,7 +329,8 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
 .kd-del{margin-left:auto;color:var(--bad)}
 
 /* ---------- Log tab: compact numbered list, several columns on wide screens ---------- */
-#logList.lg{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px 10px;align-items:stretch}
+#logList.lg{display:block}
+.lchunk{display:grid;grid-auto-flow:column;grid-template-columns:repeat(var(--c,1),minmax(0,1fr));grid-template-rows:repeat(var(--r,1),auto);gap:6px 10px;align-items:stretch;margin-bottom:6px}
 #logList .lr{display:flex;align-items:center;gap:8px;padding:6px 10px 6px 8px;margin:0;border-radius:12px}
 .lr .ln{flex:0 0 2.2em;text-align:right;font-size:.82rem;color:var(--mute);font-variant-numeric:tabular-nums}
 .lr .av{width:38px;height:38px;font-size:.8rem}
@@ -695,7 +696,7 @@ const fmt=t=>new Date(t).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-di
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),2600)}
 
 function showTab(t){document.querySelectorAll('nav button').forEach(x=>x.setAttribute('aria-selected',x.dataset.tab===t));
-  document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id==='tab-'+t))}
+  document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id==='tab-'+t));if(t==='log')renderLogList()}
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 
 // --- auth
@@ -999,8 +1000,21 @@ function render(){fillSec();renderSecs();renderInside();renderMyClass();
   const all=[...logs].reverse(),lq=$('logQ').value,t=all.filter(l=>qMatch(l.name,lq));
   $('logClear').hidden=!normQ(lq);
   $('logHead').textContent='Today ('+(normQ(lq)?t.length+' of '+all.length:t.length)+')';
-  const num=new Map(all.map((l,i)=>[l.id,all.length-i])),LB={in:'IN',out:'OUT',lunch:'LUNCH',back:'BACK'};
-  $('logList').innerHTML=t.length?t.map(l=>`<div class="card lr"><span class="ln">${num.get(l.id)}</span>${av(kids.find(k=>k.id===l.kidId)||{name:l.name})}<div class="lm"><strong>${esc(l.name)}</strong><small>${esc(l.section||'')}</small></div><span class="lt lt-${LB[l.type]?l.type:'out'}"><b>${LB[l.type]||'OUT'}</b>${fmt(l.time)}</span></div>`).join(''):`<p class="note">${all.length?'No names match your search.':'No taps yet today.'}</p>`}
+  const num=new Map(all.map((l,i)=>[l.id,all.length-i]));
+  logState={t,all,num};renderLogList()}
+// Log list: newest first, filling each column from top to bottom before starting the next column
+let logState={t:[],all:[],num:new Map()},logRowH=0;
+const LB={in:'IN',out:'OUT',lunch:'LUNCH',back:'BACK'};
+function renderLogList(){
+  const {t,all,num}=logState,box=$('logList');
+  if(!t.length){box.innerHTML=`<p class="note">${all.length?'No names match your search.':'No taps yet today.'}</p>`;return}
+  const rows=t.map(l=>`<div class="card lr"><span class="ln">${num.get(l.id)}</span>${av(kids.find(k=>k.id===l.kidId)||{name:l.name})}<div class="lm"><strong>${esc(l.name)}</strong><small>${esc(l.section||'')}</small></div><span class="lt lt-${LB[l.type]?l.type:'out'}"><b>${LB[l.type]||'OUT'}</b>${fmt(l.time)}</span></div>`);
+  const w=box.clientWidth||Math.max(280,innerWidth-(innerWidth>=1000?290:32)),cols=Math.max(1,Math.floor((w+10)/290)),
+    top=box.getBoundingClientRect().top+scrollY,R=Math.max(6,Math.floor((innerHeight-top-70)/(logRowH||58))),size=R*cols,out=[];
+  for(let i=0;i<rows.length;i+=size){const part=rows.slice(i,i+size);out.push(`<div class="lchunk" style="--c:${cols};--r:${Math.min(R,part.length)}">${part.join('')}</div>`)}
+  box.innerHTML=out.join('');
+  const c=box.querySelector('.lr');if(c&&c.offsetHeight){const h=c.offsetHeight+6;if(Math.abs(h-logRowH)>3){logRowH=h;renderLogList()}}}
+{let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{if($('tab-log').classList.contains('on'))renderLogList()},200)})}
 // --- Inside tab: who is still inside school, with a warning once the dismissal check time is reached
 const t12=v=>{const [h,m]=String(v).split(':').map(Number);return (h%12||12)+':'+String(m).padStart(2,'0')+' '+(h<12?'AM':'PM')};
 function renderInside(){
