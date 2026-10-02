@@ -578,9 +578,10 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
   
     </div>
   </div>
+  <div class="seg" id="stTabs" role="tablist" aria-label="Staff roles"></div>
   <div class="kfbar">
   <div class="sr"><input id="stQ" type="search" placeholder="Search staff name, email or phone" aria-label="Search staff" autocomplete="off"></div>
-  <div class="frm c2"><div><label for="stRole">Role</label><select id="stRole"></select></div>
+  <div class="frm c2"><div hidden><label for="stRole">Role</label><select id="stRole"></select></div>
     <div><label for="stGroup">Group by</label><select id="stGroup"><option value="role">Role</option><option value="sec">Advisory section</option></select></div></div>
   <div class="frm c2"><div><label for="stGrade">Grade</label><select id="stGrade"></select></div>
     <div><label for="stSec">Section</label><select id="stSec"></select></div></div>
@@ -1444,11 +1445,18 @@ function viewStaff(){
     list.forEach(x=>(G[stRoleOf(x)]=G[stRoleOf(x)]||[]).push(x));
     [...STORDER,...Object.keys(G).filter(k=>!STORDER.includes(k))].filter(k=>G[k]).forEach(k=>{out.push({_h:`${stRoleName(k)} (${G[k].length})`});G[k].forEach(x=>out.push(x))})}
   return out}
+const STTAB={admin:'Admin',head:'Head',adviser:'Teachers',gate:'Gate',display:'TV'};
+function renderStaffTabs(){
+  const cur=$('stRole').value,cnt=r=>staffList.filter(x=>stRoleOf(x)===r).length,
+    roles=[...STORDER,...new Set(staffList.map(stRoleOf).filter(x=>!STORDER.includes(x)))].filter(r=>cnt(r)),
+    t=(v,l,n)=>`<button type="button" role="tab" aria-selected="${v===cur}" data-st="${esc(v)}">${esc(l)} (${n})</button>`;
+  $('stTabs').innerHTML=t('','All',staffList.length)+roles.map(r=>t(r,STTAB[r]||stRoleName(r),cnt(r))).join('')}
+$('stTabs').onclick=e=>{const b=e.target.closest('[data-st]');if(!b)return;$('stRole').value=b.dataset.st;renderStaff()};
 function renderStaff(){
   const me=auth.currentUser&&auth.currentUser.uid;
   const staffCard=x=>`<div class="card"><div class="row"><div class="who">${av(x)}<div><strong>${esc(x.name||x.email||x.id)}</strong>${x.name?`<div class="note">${esc(x.email||'')}</div>`:''}${x.phone||x.gender?`<div class="note">${[x.gender==='M'?'Male':x.gender==='F'?'Female':'',x.phone].filter(Boolean).map(esc).join(' | ')}</div>`:''}</div></div><span class="tag ${x.role==='admin'?'ok':''}">${({admin:'Admin',adviser:'Adviser',gate:'Gate staff',head:'School head'})[x.role]||'Staff'}</span></div>
    ${x.role==='adviser'?secBoxes(x):''}<div class="row" style="margin-top:8px"><span><button class="btn alt sm" data-se="${x.id}">Edit</button> ${x.email?`<button class="btn alt sm" data-r="${esc(x.email)}">Send password reset</button>`:''}</span>${x.id===me?'<span class="note">You</span>':`<button class="btn alt sm" data-x="${x.id}">Remove</button>`}</div></div>`;
-  fillStaffFilter();const sv=viewStaff();
+  fillStaffFilter();renderStaffTabs();const sv=viewStaff();
   $('staffList').innerHTML=staffList.length?(sv.length?sv.map(x=>x._h?`<div class="day">${esc(x._h)}</div>`:staffCard(x)).join(''):'<p class="note">No staff match this filter.</p>'):'<p class="note">No staff yet.</p>';
   document.querySelectorAll('[data-sc]').forEach(c=>c.onchange=()=>{const id=c.dataset.sc,v=[...document.querySelectorAll('[data-sc="'+id+'"]:checked')].map(z=>z.value);updateDoc(doc(db,'staff',id),{sections:v}).then(()=>toast('Sections saved'),()=>toast('Could not save.'))});
   document.querySelectorAll('[data-se]').forEach(b=>b.onclick=()=>openStEdit(b.dataset.se));
