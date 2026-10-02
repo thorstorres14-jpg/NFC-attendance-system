@@ -441,7 +441,7 @@ function drawContacts(){
     else if(o==='req')body=`<label>What needs to change?<textarea data-f="msg" maxlength="500" placeholder="For example: my child's name is misspelled, or we have a new email address."></textarea></label>
       <p class="note">The school will review your request and update the record.</p>
       <p class="row"><button class="btn" data-act="send" data-id="${k.id}">Send to the school</button><button class="btn alt sm" data-act="cancel" data-id="${k.id}">Cancel</button></p>`;
-    else body=`<div class="row"><span class="note">Mobile</span><span>${esc(k.phone||'Not set')}</span></div>
+    else body=`<div class="row"><span class="note">Mobile</span><span>${esc(k.phone?[k.parent,k.phone].filter(Boolean).join(' - '):'Not set')}</span></div>
       <div class="row"><span class="note">Alternate</span><span>${esc(alt)}</span></div>
       <p class="row">${parentEdit?`<button class="btn alt sm" data-act="edit" data-id="${k.id}">Edit contact details</button>`:'<span></span>'}${parentReq?`<button class="btn alt sm" data-act="req" data-id="${k.id}">Request a change</button>`:''}</p>`
       +reqs.map(r=>`<div class="note" style="margin-top:6px">${esc(fdt(r.time))}: ${esc(r.message.slice(0,80))}${r.message.length>80?'...':''} <span class="pill ${r.status==='done'?'in':''}">${esc(reqTxt[r.status]||r.status)}</span>${r.note?`<div>School: ${esc(r.note)}</div>`:''}</div>`).join('');
