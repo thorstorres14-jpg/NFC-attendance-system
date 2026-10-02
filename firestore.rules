@@ -162,5 +162,30 @@ service cloud.firestore {
         && request.resource.data.history.size() > resource.data.history.size();
       allow delete: if false;
     }
+
+    // Visitors. Gate, staff and admin check visitors in and out; the head can read. The TV only reads (to show a count).
+    // Never deleted; the only change allowed afterwards is the time out.
+    match /visitors/{id} {
+      allow read: if canTap() || isHead() || isDisplay();
+      allow create: if canTap()
+        && request.resource.data.keys().hasOnly(['name', 'phone', 'purpose', 'visiting', 'idShown', 'uid', 'photo', 'timeIn', 'timeOut', 'by'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 120
+        && request.resource.data.get('phone', '') is string && request.resource.data.get('phone', '').size() <= 30
+        && request.resource.data.get('purpose', '') is string && request.resource.data.get('purpose', '').size() <= 80
+        && request.resource.data.get('visiting', '') is string && request.resource.data.get('visiting', '').size() <= 120
+        && request.resource.data.get('idShown', '') is string && request.resource.data.get('idShown', '').size() <= 40
+        && request.resource.data.get('uid', '') is string && request.resource.data.get('uid', '').size() <= 80
+        && request.resource.data.get('photo', '') is string && request.resource.data.get('photo', '').size() <= 150000
+        && request.resource.data.timeIn is number
+        && request.resource.data.timeOut == 0
+        && request.resource.data.by == request.auth.uid;
+      allow update: if canTap()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['timeOut', 'timeOutBy'])
+        && resource.data.timeOut == 0
+        && request.resource.data.timeOut is number
+        && request.resource.data.timeOut >= resource.data.timeIn
+        && request.resource.data.timeOutBy == request.auth.uid;
+      allow delete: if false;
+    }
   }
 }
