@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Live Display</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;background:#f4f8fd;color:#0b1730;display:flex;flex-direction:column;overflow:hidden}
+.mono{font-family:ui-monospace,"Cascadia Mono",Consolas,Menlo,monospace;font-variant-numeric:tabular-nums}
+
+/* ---------- header ---------- */
+header{flex:0 0 auto;display:flex;justify-content:space-between;align-items:flex-start;padding:2.2vh 2.4vw 0}
+.brand{display:flex;gap:1.2vw;align-items:center;min-width:0}
+.logo{width:7.4vh;height:7.4vh;border-radius:1.4vh;background:#fff;border:1px solid #dbe5f1;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 auto;box-shadow:0 .4vh 1.2vh rgba(20,50,100,.08)}
+.logo img{width:100%;height:100%;object-fit:contain}
+.eyebrow{font-size:1.5vh;letter-spacing:.18em;color:#5a6b86;text-transform:uppercase}
+h1{font-size:4.2vh;line-height:1.1;font-weight:800;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55vw}
+.statusrow{display:flex;gap:.8vw;align-items:center;margin-top:.8vh}
+.pill{display:inline-flex;align-items:center;gap:.5vw;font-size:1.4vh;font-weight:700;letter-spacing:.06em;padding:.5vh 1vw;border-radius:99px;border:1px solid}
+.pill.live{background:#e6f8ee;color:#157347;border-color:#a9e0c1}
+.pill.off{background:#fdeaea;color:#b42318;border-color:#f3b4b0}
+.dot{width:1vh;height:1vh;border-radius:50%;background:currentColor}
+.pill.live .dot{animation:pulse 1.6s infinite}
+@keyframes pulse{50%{opacity:.25}}
+.last{font-size:1.4vh;color:#5a6b86;background:#fff;border:1px solid #dbe5f1;padding:.5vh 1vw;border-radius:99px}
+.clockwrap{text-align:right}
+.clock{font-size:8.6vh;line-height:1;font-weight:800;color:#07142b;letter-spacing:.02em}
+.clock small{font-size:3vh;font-weight:700;margin-left:.6vw;color:#5a6b86}
+.date{font-size:1.9vh;letter-spacing:.12em;color:#5a6b86;text-transform:uppercase;margin-top:.6vh}
+.tools{display:flex;gap:.6vw;justify-content:flex-end;margin-top:1vh}
+.tools button{font:inherit;font-size:1.5vh;font-weight:600;color:#2a3a55;background:#fff;border:1px solid #dbe5f1;border-radius:1vh;padding:.8vh 1.1vw;cursor:pointer}
+.tools button:hover{background:#eef4fb}
+
+/* ---------- cards ---------- */
+main{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:1fr 1fr;gap:1.6vh 1.1vw;padding:1.6vh 2.4vw 1.6vh}
+.card{position:relative;min-height:0;display:flex;flex-direction:column;border-radius:2vh;border:.3vh solid;padding:1.3vh 1.1vw 1.2vh;box-shadow:0 .6vh 1.8vh rgba(20,50,100,.08);animation:pop .55s ease-out}
+@keyframes pop{from{transform:scale(.9);opacity:0}to{transform:none;opacity:1}}
+.card.in,.card.back{background:linear-gradient(160deg,#dff6ea,#f4fcf8);border-color:#8fd5b0}
+.card.out{background:linear-gradient(160deg,#fff3c9,#fffbea);border-color:#f3d878}
+.card.lunch{background:linear-gradient(160deg,#ffe3cc,#fff6ee);border-color:#f5b98a}
+.card.back{background:linear-gradient(160deg,#d9f3f6,#f3fcfd);border-color:#86cdd6}
+.card.latest{border-color:#1565d8;border-width:.45vh;box-shadow:0 0 0 .6vh rgba(21,101,216,.18),0 1vh 2.6vh rgba(21,101,216,.2)}
+.card.latest.in,.card.latest.back,.card.latest.out,.card.latest.lunch{background:linear-gradient(160deg,#cfe3fb,#f1f7ff)}
+.photo{position:relative;flex:1 1 auto;min-height:0;border-radius:1.6vh;overflow:hidden;background:#dbe5f1}
+.photo img{width:100%;height:100%;object-fit:cover;object-position:center 25%;display:block}
+.ini{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:9vh;font-weight:800;color:#fff;background:linear-gradient(135deg,#5b8def,#3b5bdb)}
+.badge{position:absolute;bottom:1vh;right:1vh;background:#1565d8;color:#fff;font-size:1.3vh;font-weight:800;letter-spacing:.08em;padding:.5vh .9vw;border-radius:99px;box-shadow:0 .3vh .8vh rgba(0,0,0,.25)}
+.tag{position:absolute;top:1vh;left:1vh;font-size:1.4vh;font-weight:800;letter-spacing:.1em;padding:.5vh 1vw;border-radius:99px;box-shadow:0 .3vh .8vh rgba(0,0,0,.18)}
+.in .tag,.back .tag{background:#c6efd9;color:#146c43}
+.back .tag{background:#c4eaf0;color:#0e6575}
+.out .tag{background:#fbe9a5;color:#7a5a00}
+.lunch .tag{background:#fdd6b3;color:#8a4a10}
+.card>:not(.photo){flex:0 0 auto}
+.nm{font-size:2.5vh;line-height:1.3;font-weight:800;margin-top:.8vh;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gr{font-size:3vh;font-weight:900;letter-spacing:.02em;text-transform:uppercase;margin-top:.2vh;line-height:1.1}
+.sc{font-size:1.9vh;font-weight:600;color:#33445f;text-transform:uppercase;min-height:2.2vh}
+.tm{font-size:2.5vh;font-weight:800;text-align:right;margin-top:.2vh}
+.empty{grid-column:1/-1;grid-row:1/-1;display:flex;align-items:center;justify-content:center;font-size:3.2vh;color:#7a8aa4}
+
+/* ---------- banner ---------- */
+.banner{flex:0 0 7.4vh;background:#d90f0f;border-top:.5vh solid #f3c316;overflow:hidden;display:flex;align-items:center}
+.track{display:flex;white-space:nowrap;animation:scroll var(--dur,40s) linear infinite;will-change:transform}
+.track span{font-size:3.4vh;font-weight:900;letter-spacing:.14em;color:#ffd21f;text-transform:uppercase;padding-right:3vw}
+@keyframes scroll{to{transform:translateX(-50%)}}
+
+/* ---------- login ---------- */
+#login{position:fixed;inset:0;background:#f4f8fd;display:flex;align-items:center;justify-content:center;z-index:10}
+#login form{background:#fff;border:1px solid #dbe5f1;border-radius:2vh;padding:4vh 3vw;width:min(92vw,420px);box-shadow:0 1vh 3vh rgba(20,50,100,.1);display:flex;flex-direction:column;gap:1.4vh}
+#login h2{font-size:2.6vh}
+#login p{font-size:1.8vh;color:#5a6b86}
+#login input{font:inherit;font-size:2vh;padding:1.2vh 1vw;border:1px solid #c7d4e6;border-radius:1vh}
+#login button{font:inherit;font-size:2vh;font-weight:700;padding:1.3vh;border:0;border-radius:1vh;background:#1565d8;color:#fff;cursor:pointer}
+#loginMsg{color:#b42318;font-size:1.7vh;min-height:2vh}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <form id="loginForm">
+    <h2>TV display sign-in</h2>
+    <p>Use the school's TV display account. You only need to do this once on this screen.</p>
+    <input id="email" type="email" placeholder="Email" autocomplete="username" required>
+    <input id="pw" type="password" placeholder="Password" autocomplete="current-password" required>
+    <button type="submit">Sign in</button>
+    <div id="loginMsg"></div>
+  </form>
+</div>
+
+<header>
+  <div class="brand">
+    <div class="logo" id="logoBox" hidden><img id="logo" alt=""></div>
+    <div>
+      <div class="eyebrow" id="eyebrow">Live display</div>
+      <h1 id="school">School</h1>
+      <div class="statusrow">
+        <span class="pill off" id="status"><span class="dot"></span><span id="statusTxt">CONNECTING</span></span>
+        <span class="last mono" id="lastScan" hidden></span>
+      </div>
+    </div>
+  </div>
+  <div class="clockwrap">
+    <div class="clock mono"><span id="clk">--:--:--</span><small id="clkAP"></small></div>
+    <div class="date" id="date"></div>
+    <div class="tools"><button id="sndBtn" type="button">Sound off</button><button id="fsBtn" type="button">Fullscreen</button></div>
+  </div>
+</header>
+
+<main id="grid"><div class="empty">Waiting for the first tap today…</div></main>
+
+<div class="banner"><div class="track" id="track"></div></div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getFirestore,collection,doc,getDoc,query,where,orderBy,limit,onSnapshot} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const firebaseConfig={
+  apiKey:"AIzaSyCSkppOFLolbgMJe53otK37PYUpUcIXvks",
+  authDomain:"school-smart-attendance-52cbf.firebaseapp.com",
+  projectId:"school-smart-attendance-52cbf",
+  appId:"1:1069393649004:web:dafcf9afdf265f9c83e749"
+};
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const SLOTS=10, ANNOUNCE_DAYS=7;
+const TYPES={in:['ENTRY','in'],out:['EXIT','out'],lunch:['LUNCH','lunch'],back:['BACK FROM LUNCH','back']};
+
+let school={name:'',mode:'full'}, announce=null, taps=[], kidCache=new Map(), pending=new Set();
+let unsubs=[], firstSnap=true, soundOn=false, audio=null, wake=null, netOnline=navigator.onLine, fromCache=false;
+
+/* ---------- clock ---------- */
+function tick(){
+  const d=new Date(),h=d.getHours(),p=n=>String(n).padStart(2,'0');
+  $('clk').textContent=p(h%12||12)+':'+p(d.getMinutes())+':'+p(d.getSeconds());
+  $('clkAP').textContent=h<12?'AM':'PM';
+  $('date').textContent=d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
+setInterval(tick,1000);tick();
+
+/* ---------- privacy: what each school agreed to show ---------- */
+function splitName(n){
+  n=(n||'').trim();
+  if(n.includes(',')){const p=n.split(',').map(x=>x.trim());return {last:p[0]||'',first:p[1]||'',mid:p.slice(2).join(' ')}}
+  const w=n.split(/\s+/);return {first:w[0]||'',last:w.slice(1).join(' '),mid:''}
+}
+function shownName(n){
+  const s=splitName(n);
+  if(school.mode==='initials')return ((s.first[0]||'')+'.'+(s.last[0]||'')+'.').toUpperCase().replace('..','.');
+  if(school.mode==='first')return s.first||s.last||'';
+  return [s.first,s.last].filter(Boolean).join(' ');
+}
+function iniOf(n){const s=splitName(n);return ((s.first[0]||'')+(s.last[0]||'')).toUpperCase()||'?'}
+function gradeSec(sec){
+  sec=(sec||'').trim();const i=sec.indexOf(' - ');
+  return i<0?{g:sec,s:''}:{g:sec.slice(0,i),s:sec.slice(i+3)};
+}
+const okPhoto=p=>typeof p==='string'&&p.startsWith('data:image');
+
+/* ---------- rendering ---------- */
+function timeStr(t){
+  const d=new Date(t),h=d.getHours(),p=n=>String(n).padStart(2,'0');
+  return p(h%12||12)+':'+p(d.getMinutes())+':'+p(d.getSeconds())+' '+(h<12?'AM':'PM');
+}
+let shown=new Set();   // cards already on screen: they don't replay the pop animation on re-render
+function render(){
+  const grid=$('grid');
+  if(!taps.length){grid.innerHTML='<div class="empty">Waiting for the first tap today…</div>';shown=new Set();return}
+  grid.innerHTML=taps.slice(0,SLOTS).map((t,i)=>{
+    const ty=TYPES[t.type]||TYPES.out,k=kidCache.get(t.kidId)||{},gs=gradeSec(k.section||t.section);
+    const photo=school.mode!=='initials'&&okPhoto(k.photo)
+      ?`<img src="${k.photo}" alt="">`
+      :`<div class="ini">${esc(iniOf(t.name))}</div>`;
+    return `<div class="card ${ty[1]}${i===0?' latest':''}" data-id="${esc(t.id)}">
+      <div class="photo">${photo}<span class="tag">${ty[0]}</span>${i===0?'<span class="badge">LAST TAP</span>':''}</div>
+      <div class="nm">${esc(shownName(t.name))}</div>
+      <div class="gr">${esc(gs.g||'')}</div>
+      <div class="sc">${esc(gs.s)}</div>
+      <div class="tm mono">${timeStr(t.time)}</div>
+    </div>`}).join('');
+  grid.querySelectorAll('.card').forEach(c=>{if(shown.has(c.dataset.id))c.style.animation='none'});
+  shown=new Set(taps.slice(0,SLOTS).map(t=>t.id));
+}
+function renderBanner(){
+  let txt=(school.name||'Welcome').toUpperCase();
+  if(announce)txt+='  •  '+(announce.title?announce.title+': ':'')+announce.body.replace(/\s+/g,' ');
+  const unit=`<span>${esc(txt)}  •</span>`;
+  // Repeat enough times to fill the screen, then twice so the loop is seamless.
+  const reps=Math.max(2,Math.ceil(2400/Math.max(txt.length*28,300)));
+  const half=unit.repeat(reps);
+  $('track').innerHTML=half+half;
+  $('track').style.setProperty('--dur',Math.max(25,txt.length*reps*0.28)+'s');
+}
+function renderStatus(){
+  const live=netOnline&&!fromCache;
+  $('status').className='pill '+(live?'live':'off');
+  $('statusTxt').textContent=live?'LIVE':'REALTIME OFFLINE';
+}
+addEventListener('online',()=>{netOnline=true;renderStatus()});
+addEventListener('offline',()=>{netOnline=false;renderStatus()});
+
+/* ---------- sound, fullscreen, keep awake ---------- */
+function chime(){
+  if(!soundOn||!audio)return;
+  const now=audio.currentTime;
+  [[880,0],[1318.5,.16]].forEach(([f,d])=>{
+    const o=audio.createOscillator(),g=audio.createGain();
+    o.type='sine';o.frequency.value=f;o.connect(g);g.connect(audio.destination);
+    g.gain.setValueAtTime(0,now+d);g.gain.linearRampToValueAtTime(.35,now+d+.02);g.gain.exponentialRampToValueAtTime(.001,now+d+.7);
+    o.start(now+d);o.stop(now+d+.75)});
+}
+async function keepAwake(){try{if('wakeLock' in navigator)wake=await navigator.wakeLock.request('screen')}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')keepAwake()});
+$('sndBtn').onclick=()=>{
+  soundOn=!soundOn;
+  if(soundOn){audio=audio||new (window.AudioContext||window.webkitAudioContext)();audio.resume();chime()}
+  $('sndBtn').textContent=soundOn?'Sound on':'Sound off';keepAwake();
+};
+$('fsBtn').onclick=()=>{
+  if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();
+  keepAwake();
+};
+
+/* ---------- data ---------- */
+async function loadKid(id){
+  if(!id||kidCache.has(id)||pending.has(id))return;
+  pending.add(id);
+  try{const s=await getDoc(doc(db,'kids',id));kidCache.set(id,s.exists()?{photo:s.data().photo||'',section:s.data().section||''}:{})}
+  catch(e){kidCache.set(id,{})}
+  pending.delete(id);render();
+}
+function start(){
+  stop();firstSnap=true;
+  const d0=new Date();d0.setHours(0,0,0,0);
+  unsubs.push(onSnapshot(doc(db,'settings','school'),s=>{
+    const d=s.exists()?s.data():{};
+    school.name=d.schoolName||'';
+    school.mode=['full','first','initials'].includes(d.displayMode)?d.displayMode:'full';
+    $('school').textContent=school.name||'School';document.title=(school.name||'School')+' · Live display';
+    $('eyebrow').textContent='Live display';
+    if(d.schoolLogo){$('logo').src=d.schoolLogo;$('logoBox').hidden=false}else $('logoBox').hidden=true;
+    renderBanner();render();
+  },()=>{}));
+  unsubs.push(onSnapshot(query(collection(db,'broadcasts'),orderBy('time','desc'),limit(1)),s=>{
+    const d=s.docs[0]&&s.docs[0].data();
+    announce=d&&Date.now()-d.time<ANNOUNCE_DAYS*864e5?{title:d.title||'',body:d.body||''}:null;
+    renderBanner();
+  },()=>{}));
+  unsubs.push(onSnapshot(
+    query(collection(db,'log'),where('time','>=',d0.getTime()),orderBy('time','desc'),limit(SLOTS)),
+    {includeMetadataChanges:true},
+    s=>{
+      fromCache=s.metadata.fromCache;renderStatus();
+      let fresh=false;
+      s.docChanges().forEach(c=>{if(c.type==='added'&&!firstSnap)fresh=true});
+      taps=s.docs.map(x=>({id:x.id,...x.data()}));
+      taps.forEach(t=>loadKid(t.kidId));
+      if(taps[0]){$('lastScan').hidden=false;$('lastScan').textContent='Last scan: '+timeStr(taps[0].time)}
+      render();
+      if(fresh)chime();
+      if(!s.metadata.fromCache||!firstSnap)firstSnap=false;
+    },
+    e=>{$('statusTxt').textContent='CANNOT READ TAPS ('+(e.code||'error')+')';$('status').className='pill off'}
+  ));
+  // New school day: reload just after midnight so "today" starts clean.
+  const m=new Date();m.setHours(24,0,5,0);
+  clearTimeout(start.mid);start.mid=setTimeout(()=>location.reload(),m-Date.now());
+}
+function stop(){unsubs.forEach(u=>u());unsubs=[]}
+
+/* ---------- sign-in ---------- */
+$('loginForm').onsubmit=async e=>{
+  e.preventDefault();$('loginMsg').textContent='';
+  try{await signInWithEmailAndPassword(auth,$('email').value.trim(),$('pw').value)}
+  catch(x){$('loginMsg').textContent='Could not sign in. Check the email and password.'}
+};
+onAuthStateChanged(auth,async user=>{
+  if(!user){stop();$('login').hidden=false;return}
+  let role='';
+  try{const s=await getDoc(doc(db,'staff',user.uid));role=s.exists()?s.data().role:''}catch(e){}
+  if(role!=='display'){
+    $('loginMsg').textContent='This account is not a TV display account. Ask the admin to create one with the "TV display" role.';
+    await signOut(auth);return;
+  }
+  $('login').hidden=true;start();
+});
+renderBanner();renderStatus();
+</script>
+</body>
+</html>
