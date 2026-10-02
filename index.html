@@ -626,7 +626,7 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
     <div><label for="stSec">Section</label><select id="stSec"></select></div></div>
   <div class="row" style="margin:8px 0"><span class="note" id="stCount"></span><button class="btn alt sm" id="stClear" type="button" hidden>Clear filters</button></div>
   </div>
-  <div class="seg" id="stViewBar" role="tablist" aria-label="Teacher view" style="max-width:220px" hidden>
+  <div class="seg" id="stViewBar" role="tablist" aria-label="Staff view" style="max-width:220px" hidden>
     <button type="button" role="tab" aria-selected="true" data-stv="list">List</button>
     <button type="button" role="tab" aria-selected="false" data-stv="card">Cards</button>
   </div>
@@ -1543,16 +1543,16 @@ const kidsOfSec=n=>kids.filter(k=>k.section===n),
   stSummary=x=>stSecs(x).length?[...stSecs(x)].sort(cmp).join(', '):'No section',
   stTotal=x=>stSecs(x).reduce((t,n)=>t+kidsOfSec(n).length,0);
 function stMode(){
-  const tm=$('stRole').value==='adviser';
-  $('staffList').className=tm?(stView==='card'?'stgrid':'stlist'):'';
-  $('stViewBar').hidden=!tm;
+  $('staffList').className=stView==='card'?'stgrid':'stlist';
+  $('stViewBar').hidden=false;
   document.querySelectorAll('[data-stv]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.stv===stView)))}
 function stRows(sv,staffCard){
-  const tm=$('stRole').value==='adviser',byRole=$('stGroup').value==='role';
-  const item=x=>stView==='card'
-    ?`<button type="button" class="stc" data-std="${x.id}">${av(x,true)}<strong>${esc(x.name||x.email||x.id)}</strong><small>${esc(stSummary(x))}</small><span class="tag">${stTotal(x)} students</span></button>`
-    :`<button type="button" class="stl" data-std="${x.id}">${av(x)}<span class="meta"><strong>${esc(x.name||x.email||x.id)}</strong><small>${esc(stSummary(x))}</small></span><span class="cnt"><b>${stTotal(x)}</b><small>students</small></span></button>`;
-  return sv.filter(x=>!(tm&&byRole&&x._h)).map(x=>x._h?`<div class="day">${esc(x._h)}</div>`:tm?item(x):staffCard(x)).join('')}
+  const one=$('stRole').value&&$('stGroup').value==='role';
+  const sub=x=>x.role==='adviser'?stSummary(x):(x.name?x.email||'':''),nm=x=>x.name||x.email||x.id,
+    item=x=>stView==='card'
+    ?`<button type="button" class="stc" data-std="${x.id}">${av(x,true)}<strong>${esc(nm(x))}</strong><small>${esc(sub(x))}</small><span class="tag ${x.role==='admin'?'ok':''}">${x.role==='adviser'?stTotal(x)+' students':esc(stRoleName(stRoleOf(x)))}</span></button>`
+    :`<button type="button" class="stl" data-std="${x.id}">${av(x)}<span class="meta"><strong>${esc(nm(x))}</strong><small>${esc(sub(x))}</small></span>${x.role==='adviser'?`<span class="cnt"><b>${stTotal(x)}</b><small>students</small></span>`:`<span class="tag ${x.role==='admin'?'ok':''}">${esc(stRoleName(stRoleOf(x)))}</span>`}</button>`;
+  return sv.filter(x=>!(one&&x._h)).map(x=>x._h?`<div class="day">${esc(x._h)}</div>`:item(x)).join('')}
 document.querySelectorAll('[data-stv]').forEach(b=>b.onclick=()=>{stView=b.dataset.stv;try{localStorage.setItem('stView',stView)}catch(e){}renderStaff()});
 function openStd(id){stdOpen=id;stdEditOpen=false;renderStd();$('stdModal').hidden=false;document.body.classList.add('modal-open');$('stdModal').firstElementChild.scrollTop=0}
 function closeStd(){$('stdModal').hidden=true;document.body.classList.remove('modal-open');stdOpen=null}
