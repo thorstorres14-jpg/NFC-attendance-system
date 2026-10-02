@@ -379,7 +379,7 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
       <div><label for="kFirst">First name</label><input id="kFirst" autocomplete="off"></div>
       <div><label for="kMid">Middle name</label><input id="kMid" autocomplete="off"></div></div>
     <div class="frm c2"><div><label for="kLrn">LRN (optional, 12 digits)</label><input id="kLrn" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="e.g. 123456789012"></div>
-      <div><label for="kBday">Birthdate (optional)</label><input id="kBday" type="date"></div></div>
+      <div><label for="kBM">Birthdate (MM DD YYYY)</label><div style="display:flex;gap:6px"><input id="kBM" class="bd-in" inputmode="numeric" maxlength="2" placeholder="MM" autocomplete="off" aria-label="Birth month" style="min-width:0;flex:1"><input id="kBD" class="bd-in" inputmode="numeric" maxlength="2" placeholder="DD" autocomplete="off" aria-label="Birth day" style="min-width:0;flex:1"><input id="kBY" class="bd-in" inputmode="numeric" maxlength="4" placeholder="YYYY" autocomplete="off" aria-label="Birth year" style="min-width:0;flex:1.6"></div></div></div>
     <div class="frm c3"><div><label for="kSex">Sex</label><select id="kSex"><option value="">Select...</option><option value="M">Male</option><option value="F">Female</option></select></div>
       <div><label for="kGrade">Grade</label><select id="kGrade"></select></div>
       <div><label for="kSecName">Section</label><select id="kSecName"></select><select id="kSec" hidden></select></div></div>
@@ -732,7 +732,7 @@ function setForm(k){
   $('addKid').textContent=k?'Save':'Add';
   setPhoto('k',k?k.photo:'');
   const e=k?emailsOf(k):[];
-  $('kSex').value=k?(k.sex||''):'';fillKSec(k?k.section:'');$('kSec').value=k?(k.section||''):'';{const nm=k?splitName(k.name):['','',''];$('kLast').value=nm[0];$('kFirst').value=nm[1];$('kMid').value=nm[2]}$('kParent').value=k?(k.parent||''):'';$('kPhone').value=k?k.phone:'';$('kAltName').value=k?(k.altName||''):'';$('kAltPhone').value=k?(k.altPhone||''):'';$('kLrn').value=k?(k.lrn||''):'';$('kBday').value=k?(k.birthdate||''):'';
+  $('kSex').value=k?(k.sex||''):'';fillKSec(k?k.section:'');$('kSec').value=k?(k.section||''):'';{const nm=k?splitName(k.name):['','',''];$('kLast').value=nm[0];$('kFirst').value=nm[1];$('kMid').value=nm[2]}$('kParent').value=k?(k.parent||''):'';$('kPhone').value=k?k.phone:'';$('kAltName').value=k?(k.altName||''):'';$('kAltPhone').value=k?(k.altPhone||''):'';$('kLrn').value=k?(k.lrn||''):'';{const bp=k&&k.birthdate?k.birthdate.split('-'):['','',''];$('kBY').value=bp[0]||'';$('kBM').value=bp[1]||'';$('kBD').value=bp[2]||''}
   $('kEmail').value=e[0]||'';$('kEmail2').value=e[1]||''}
 // Names are stored as "Last, First, Middle" (the way SF2 prints them)
 function splitName(n){n=(n||'').trim();if(n.includes(',')){const p=n.split(',').map(x=>x.trim());return [p[0]||'',p[1]||'',p.slice(2).join(' ')]}
@@ -749,8 +749,12 @@ $('addKid').onclick=async()=>{
   const lrn=$('kLrn').value.replace(/\D/g,'');
   if(lrn&&lrn.length!==12){toast('An LRN has 12 digits. Check it, or leave it blank.');return}
   if(lrn){const u=kids.find(x=>x.id!==editing&&x.lrn===lrn);if(u){toast('That LRN is already used by '+u.name+'.');return}}
-  const bday=$('kBday').value;
-  if(bday){const t=new Date(),td=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');if(!/^\d{4}-\d{2}-\d{2}$/.test(bday)||bday>td){toast('Check the birthdate. It cannot be in the future.');return}}
+  let bday='';
+  {const by=$('kBY').value.trim(),bm=$('kBM').value.trim(),bd=$('kBD').value.trim();
+   if(by||bm||bd){const y=+by,m=+bm,d=+bd,dt=new Date(y,m-1,d);
+     if(by.length!==4||!bm||!bd||y<1950||dt.getFullYear()!==y||dt.getMonth()!==m-1||dt.getDate()!==d){toast('Check the birthdate. Enter the month, day and a 4-digit year, for example 03 05 2018.');return}
+     if(dt>new Date()){toast('The birthdate cannot be in the future.');return}
+     bday=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0')}}
   {const nk=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
    const d=kids.find(x=>{if(x.id===editing)return false;const q=splitName(x.name);
      if(!(nk(q[0])===nk(last)&&nk(q[1])===nk(first)&&(!nk(q[2])||!nk(mid)||nk(q[2])===nk(mid))))return false;
@@ -769,6 +773,7 @@ $('addKid').onclick=async()=>{
     closeKid();
   }catch(e){toast('Could not save ('+(e.code||e.message)+').')}};
 
+document.addEventListener('input',e=>{const t=e.target;if(t.classList&&t.classList.contains('bd-in')){t.value=t.value.replace(/\D/g,'');if(t.value.length>=t.maxLength){const n=t.nextElementSibling;if(n&&n.classList.contains('bd-in'))n.focus()}}});
 // --- Children tab: photo cards. Tap a card to see everything about the child.
 let kdId=null;
 const okPhoto=x=>/^data:image\/(jpeg|png|webp);base64,/.test(x||'');
