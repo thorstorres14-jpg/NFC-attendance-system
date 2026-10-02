@@ -378,6 +378,8 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
     <div class="frm c3"><div><label for="kLast">Last name</label><input id="kLast" autocomplete="off"></div>
       <div><label for="kFirst">First name</label><input id="kFirst" autocomplete="off"></div>
       <div><label for="kMid">Middle name</label><input id="kMid" autocomplete="off"></div></div>
+    <div class="frm c2"><div><label for="kLrn">LRN (optional, 12 digits)</label><input id="kLrn" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="e.g. 123456789012"></div>
+      <div><label for="kBday">Birthdate (optional)</label><input id="kBday" type="date"></div></div>
     <div class="frm c3"><div><label for="kSex">Sex</label><select id="kSex"><option value="">Select...</option><option value="M">Male</option><option value="F">Female</option></select></div>
       <div><label for="kGrade">Grade</label><select id="kGrade"></select></div>
       <div><label for="kSecName">Section</label><select id="kSecName"></select><select id="kSec" hidden></select></div></div>
@@ -730,7 +732,7 @@ function setForm(k){
   $('addKid').textContent=k?'Save':'Add';
   setPhoto('k',k?k.photo:'');
   const e=k?emailsOf(k):[];
-  $('kSex').value=k?(k.sex||''):'';fillKSec(k?k.section:'');$('kSec').value=k?(k.section||''):'';{const nm=k?splitName(k.name):['','',''];$('kLast').value=nm[0];$('kFirst').value=nm[1];$('kMid').value=nm[2]}$('kParent').value=k?(k.parent||''):'';$('kPhone').value=k?k.phone:'';$('kAltName').value=k?(k.altName||''):'';$('kAltPhone').value=k?(k.altPhone||''):'';
+  $('kSex').value=k?(k.sex||''):'';fillKSec(k?k.section:'');$('kSec').value=k?(k.section||''):'';{const nm=k?splitName(k.name):['','',''];$('kLast').value=nm[0];$('kFirst').value=nm[1];$('kMid').value=nm[2]}$('kParent').value=k?(k.parent||''):'';$('kPhone').value=k?k.phone:'';$('kAltName').value=k?(k.altName||''):'';$('kAltPhone').value=k?(k.altPhone||''):'';$('kLrn').value=k?(k.lrn||''):'';$('kBday').value=k?(k.birthdate||''):'';
   $('kEmail').value=e[0]||'';$('kEmail2').value=e[1]||''}
 // Names are stored as "Last, First, Middle" (the way SF2 prints them)
 function splitName(n){n=(n||'').trim();if(n.includes(',')){const p=n.split(',').map(x=>x.trim());return [p[0]||'',p[1]||'',p.slice(2).join(' ')]}
@@ -744,15 +746,26 @@ $('addKid').onclick=async()=>{
   const last=$('kLast').value.trim(),first=$('kFirst').value.trim(),mid=$('kMid').value.trim(),name=[last,first,mid].filter(Boolean).join(', '),parent=$('kParent').value.trim(),phone=$('kPhone').value.trim(),altName=$('kAltName').value.trim(),altPhone=$('kAltPhone').value.trim(),sex=$('kSex').value,section=$('kSec').value.trim();
   const emails=[$('kEmail').value,$('kEmail2').value].map(x=>x.trim().toLowerCase()).filter((x,i,a)=>x&&a.indexOf(x)===i);
   if(!last||!first||!phone||!emails.length){toast('Enter the child\'s last and first name, a mobile number, and at least one parent email.');return}
+  const lrn=$('kLrn').value.replace(/\D/g,'');
+  if(lrn&&lrn.length!==12){toast('An LRN has 12 digits. Check it, or leave it blank.');return}
+  if(lrn){const u=kids.find(x=>x.id!==editing&&x.lrn===lrn);if(u){toast('That LRN is already used by '+u.name+'.');return}}
+  const bday=$('kBday').value;
+  if(bday){const t=new Date(),td=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');if(!/^\d{4}-\d{2}-\d{2}$/.test(bday)||bday>td){toast('Check the birthdate. It cannot be in the future.');return}}
+  {const nk=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+   const d=kids.find(x=>{if(x.id===editing)return false;const q=splitName(x.name);
+     if(!(nk(q[0])===nk(last)&&nk(q[1])===nk(first)&&(!nk(q[2])||!nk(mid)||nk(q[2])===nk(mid))))return false;
+     return !(bday&&x.birthdate&&bday!==x.birthdate)});
+   if(d){const same=!!(bday&&d.birthdate&&bday===d.birthdate);
+     if(!confirm(d.name+' is already in the list'+(d.section?' ('+d.section+')':'')+(same?', with the same birthdate. This is very likely the same child. ':'. ')+(editing?'Save anyway?':'Add anyway?')))return}}
   try{
     if(editing){
       const id=editing;
-      await updateDoc(doc(db,'kids',id),{name,parent,phone,altName,altPhone,parentEmails:emails,sex,section,photo:photos.k});
+      await updateDoc(doc(db,'kids',id),{name,parent,phone,altName,altPhone,parentEmails:emails,sex,section,lrn,birthdate:bday,photo:photos.k});
       const snap=await getDocs(query(collection(db,'log'),where('kidId','==',id)));
       for(let i=0;i<snap.docs.length;i+=400){const bt=writeBatch(db);snap.docs.slice(i,i+400).forEach(d=>bt.update(d.ref,{parentEmails:emails,name,section}));await bt.commit()}
       toast('Changes saved');
     }else{
-      await addDoc(collection(db,'kids'),{name,parent,phone,altName,altPhone,parentEmails:emails,uid:null,sex,section,photo:photos.k});toast('Added '+name)}
+      await addDoc(collection(db,'kids'),{name,parent,phone,altName,altPhone,parentEmails:emails,uid:null,sex,section,lrn,birthdate:bday,photo:photos.k});toast('Added '+name)}
     closeKid();
   }catch(e){toast('Could not save ('+(e.code||e.message)+').')}};
 
@@ -770,6 +783,8 @@ function fillKd(k){
     today=mine.length?mine.map(l=>tl(l.type)+' '+fmt(l.time)).join(', '):'No tap yet today',
     tel=n=>`<a href="tel:${esc(n)}">${esc(n)}</a>`,adv=advOf(k).map(advName),em=emailsOf(k),
     rows=[['Today',esc(today)],['Parent / guardian',esc(k.parent||'Not set')],['Mobile number',k.phone?tel(k.phone):'Not set']];
+  if(k.lrn)rows.push(['LRN',esc(k.lrn)]);
+  if(k.birthdate){const bp=k.birthdate.split('-').map(Number);if(bp.length===3&&bp[0])rows.push(['Birthdate',esc(new Date(bp[0],bp[1]-1,bp[2]).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'}))])}
   if(k.altName||k.altPhone)rows.push(['Alternate contact',[esc(k.altName||''),k.altPhone?tel(k.altPhone):''].filter(Boolean).join('<br>')]);
   rows.push(['Parent email',em.length?em.map(esc).join('<br>'):'Not set']);
   if(adv.length)rows.push(['Class adviser',adv.map(esc).join('<br>')]);
