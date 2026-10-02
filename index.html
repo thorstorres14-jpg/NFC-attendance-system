@@ -147,6 +147,24 @@ main:has(#tab-sf2.on){max-width:1180px}
 /* Manage tab sections */
 .seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.seg button{flex:1;min-width:0;padding:9px 6px;border:1.5px solid var(--line);border-radius:12px;background:transparent;color:var(--mute);font:inherit;font-size:.85rem;font-weight:500;cursor:pointer}
 .seg button[aria-selected="true"]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+/* Dashboard (admin and school head) */
+.dbstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px}
+.dbs{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--card);border:1px solid var(--line);border-radius:16px;min-width:0}
+.dbi{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:none;color:#fff}
+.dbs small{display:block;color:var(--mute);font-size:.8rem;line-height:1.2}.dbs b{display:block;font-size:1.6rem;line-height:1.15}.dbs i{font-style:normal;font-size:.78rem;color:var(--ok)}
+.dbgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:12px;align-items:start}
+.dbgrid>.card{margin:0}
+.dbh{font-weight:600;margin-bottom:10px}
+.dbdon{display:flex;align-items:center;gap:18px;flex-wrap:wrap}.dbdon svg{width:150px;height:150px;flex:none}
+.dbleg{display:grid;gap:6px;font-size:.9rem;flex:1;min-width:140px}.dbleg div{display:flex;align-items:center;gap:8px}.dbleg span.dot{width:10px;height:10px;border-radius:50%;flex:none}.dbleg b{margin-left:auto}
+.dbrow{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line)}.dbrow:first-of-type{border-top:0}
+.dbrow .nm{flex:1;min-width:0;line-height:1.2}.dbrow .nm strong,.dbrow .nm small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dbrow .nm small{font-size:.78rem;color:var(--mute)}.dbrow time{font-size:.85rem;color:var(--mute);font-variant-numeric:tabular-nums}
+.dbchip{font-size:.72rem;font-weight:600;letter-spacing:.04em;padding:2px 9px;border-radius:99px;background:color-mix(in srgb,var(--c) 18%,transparent);color:var(--c);min-width:58px;text-align:center}
+.dbchip.in,.dbchip.back{--c:var(--ok)}.dbchip.out{--c:#c78a0a}.dbchip.lunch{--c:var(--bad)}
+.dbbar{display:grid;grid-template-columns:96px 1fr 44px;gap:10px;align-items:center;font-size:.88rem;margin:8px 0}.dbbar span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dbbar>div{height:10px;border-radius:5px;background:var(--line);overflow:hidden}.dbbar>div i{display:block;height:100%;border-radius:5px}.dbbar span:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.dbcols{display:flex;align-items:flex-end;gap:6px;height:150px}.dbcols>div{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;font-size:.72rem;color:var(--mute)}.dbcols>div i{display:block;width:100%;border-radius:5px 5px 0 0;min-height:2px}.dbcols>div b{color:var(--ink);font-weight:500}
+.dbat{display:flex;justify-content:space-between;align-items:center;width:100%;margin:0 0 8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);font:inherit;font-size:.92rem;cursor:pointer;text-align:left}
+.dbat.bad{background:color-mix(in srgb,var(--bad) 14%,transparent);border-color:transparent;color:var(--bad)}.dbat.warn{background:color-mix(in srgb,var(--acc) 22%,transparent);border-color:transparent}
 /* My Class (adviser home) */
 .mctiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:8px;margin:10px 0}
 .mctile{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 6px;border:1.5px solid var(--line);border-radius:14px;background:var(--card);color:var(--mute);font:inherit;font-size:.78rem;cursor:pointer}
@@ -207,7 +225,7 @@ button{cursor:pointer}
   body:has(#nav:not([hidden])){padding-left:230px}
   main{max-width:1180px;padding:28px 36px 48px}
   /* wide screens: card/list tabs use more of the screen (capped on ultrawide monitors) */
-  main:has(#tab-log.on),main:has(#tab-kids.on),main:has(#tab-staff.on),main:has(#tab-myclass.on),main:has(#tab-inside.on){max-width:1600px}
+  main:has(#tab-dashboard.on),main:has(#tab-log.on),main:has(#tab-kids.on),main:has(#tab-staff.on),main:has(#tab-myclass.on),main:has(#tab-inside.on){max-width:1600px}
   #inList,#inLunch{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px 12px;align-items:start}
   #inList>.ihd,#inLunch>.ihd,#inList>p{grid-column:1/-1}
   #inList>.card,#inLunch>.card{margin-bottom:0}
@@ -465,6 +483,18 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
   <div id="logList" class="lg"></div>
 </section>
 
+<section id="tab-dashboard">
+  <div class="row" style="margin-bottom:10px"><strong>Dashboard</strong><span class="note" id="dbDate"></span></div>
+  <div class="dbstats" id="dbStats"></div>
+  <div class="dbgrid">
+    <div class="card" id="dbOverview"></div>
+    <div class="card" id="dbRecent"></div>
+    <div class="card" id="dbArrivals"></div>
+    <div class="card" id="dbSections"></div>
+    <div class="card" id="dbAttn"></div>
+  </div>
+</section>
+
 <section id="tab-myclass">
   <div class="seg" id="mcTabs" role="tablist" aria-label="My sections" hidden></div>
   <p class="note" id="mcNone" hidden>No section is assigned to you yet. Please ask the admin to assign your class.</p>
@@ -665,6 +695,7 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
 
 <nav role="tablist" id="nav" hidden>
   <div class="navbrand" aria-hidden="true"><img id="navLogo" alt="" hidden><span class="mono" id="navMono" aria-hidden="true"></span><span id="navName">Tap-In Attendance</span></div>
+  <button role="tab" aria-selected="false" data-tab="dashboard" hidden>Dashboard</button>
   <button role="tab" aria-selected="false" data-tab="myclass" hidden>My Class</button>
   <button role="tab" aria-selected="true" data-tab="tap">Tap</button>
   <button role="tab" aria-selected="false" data-tab="kids">Children</button>
@@ -732,11 +763,11 @@ onAuthStateChanged(auth,async user=>{
     if(!ok){$('loginMsg').textContent='This account is not a staff account. Check the staff document in Firestore: its Document ID must be the User UID of this account.';signOut(auth);return}$('loginMsg').textContent=''}
   $('login').hidden=!!user;document.body.classList.toggle('is-login',!user);$('app').hidden=!user;$('nav').hidden=!user;$('outBtn').hidden=!user;$('pwBtn').hidden=!user;if(!user)$('pwCard').hidden=true;$('navStaff').hidden=!admin;$('navManage').hidden=!admin;
   if(!user)return;
-  const vis={myclass:myRole==='adviser',tap:myRole!=='adviser'&&myRole!=='head',kids:myRole==='admin'||myRole==='staff',log:true,inside:true,visitors:myRole!=='adviser',sf2:myRole!=='gate',school:myRole!=='gate'};
+  const vis={dashboard:myRole==='admin'||myRole==='head',myclass:myRole==='adviser',tap:myRole!=='adviser'&&myRole!=='head',kids:myRole==='admin'||myRole==='staff',log:true,inside:true,visitors:myRole!=='adviser',sf2:myRole!=='gate',school:myRole!=='gate'};
   Object.entries(vis).forEach(([t,v])=>document.querySelector('nav [data-tab='+t+']').hidden=!v);
   document.body.classList.toggle('role-head',myRole==='head');
   lockSchool();lockSfLogos(myRole==='head');
-  showTab(myRole==='adviser'?'myclass':myRole==='head'?'inside':'tap');
+  showTab(myRole==='adviser'?'myclass':myRole==='head'?'dashboard':'tap');
   unsub.push(onSnapshot(doc(db,'settings','school'),s=>applySchool(s.exists()?s.data():{},admin),()=>{}));
   unsub.push(onSnapshot(doc(db,'settings','sf2logos'),s=>applySfLogos(s.exists()?s.data():{},admin,s.exists()),()=>{}));
   unsub.push(onSnapshot(collection(db,'sections'),s=>{secList=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>cmp(a.name,b.name));render();if(myRole==='admin')renderStaff()},()=>toast('Could not load the sections.')));
@@ -848,7 +879,7 @@ function subVisDay(){
   visDayUnsub=onSnapshot(query(collection(db,'visitors'),where('timeIn','>=',a.getTime()),where('timeIn','<',b.getTime()),orderBy('timeIn')),s=>{visDay=s.docs.map(d=>({id:d.id,...d.data()}));renderVisitors()},()=>toast('Could not load the visitor log.'))}
 function renderVisitors(){
   const head=myRole==='head';$('visAddRow').hidden=head;
-  const n=visOpen.length,bd=$('visBadge');bd.hidden=!n;bd.textContent=n;
+  const n=visOpen.length,bd=$('visBadge');bd.hidden=!n;bd.textContent=n;renderDashboard();
   const dt=$('sfDismiss').value,now=new Date(),due=!!dt&&now.getHours()*60+now.getMinutes()>=toMin(dt),w=$('visWarn');
   if(due&&n){w.innerHTML=`<strong>\u26A0 ${n} ${n===1?'visitor is':'visitors are'} still inside school</strong><div class="note">Please make sure each one has timed out.</div>`;w.hidden=false}else w.hidden=true;
   $('visInHead').textContent='Visitors inside ('+n+')';
@@ -996,7 +1027,7 @@ $('kdCard').onclick=()=>{if(!kdId)return;assigning=kdId;toast('Tap the new card 
 $('kdEdit').onclick=()=>{const k=kids.find(x=>x.id===kdId);if(!k)return;closeKd();openKid(k)};
 $('kdDel').onclick=()=>{if(!kdId||!confirm('Remove this child?'))return;const id=kdId;closeKd();deleteDoc(doc(db,'kids',id)).catch(()=>toast('Could not remove.'))};
 
-function render(){fillSec();renderSecs();renderInside();renderMyClass();
+function render(){fillSec();renderSecs();renderInside();renderMyClass();renderDashboard();
   fillSim();
   fillKidFilter();const kview=viewKids();
   $('kidList').innerHTML=kids.length?(kview.length?kview.map(k=>k._h?`<div class="day">${esc(k._h)}</div>`:kTile(k)).join(''):'<p class="note">No children match this filter.</p>'):'<p class="note">No children yet. Tap "+ Add child" above.</p>';
@@ -1516,6 +1547,49 @@ function viewStaff(){
     list.forEach(x=>(G[stRoleOf(x)]=G[stRoleOf(x)]||[]).push(x));
     [...STORDER,...Object.keys(G).filter(k=>!STORDER.includes(k))].filter(k=>G[k]).forEach(k=>{out.push({_h:`${stRoleName(k)} (${G[k].length})`});G[k].forEach(x=>out.push(x))})}
   return out}
+// --- Dashboard (admin and school head): today at a glance
+const dbIc=p=>`<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`,
+  DBI={people:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.8a3.5 3.5 0 010 6.4M18 14.8c2 .6 3.3 2.3 3.6 5.2"/>',check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',door:'<path d="M14 4h5v16h-5"/><path d="M3 12h11"/><path d="M10 8l4 4-4 4"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>'};
+function renderDashboard(){
+  if(myRole!=='admin'&&myRole!=='head')return;
+  const total=kids.length,first={},last={};
+  [...logs].sort((a,b)=>a.time-b.time).forEach(l=>{if(!first[l.kidId])first[l.kidId]=l;last[l.kidId]=l});
+  const cut=toMin($('sfCut').value||'07:30'),mins=t=>{const d=new Date(t);return d.getHours()*60+d.getMinutes()},
+    presentKids=kids.filter(k=>first[k.id]),present=presentKids.length,
+    late=presentKids.filter(k=>mins(first[k.id].time)>cut).length,onTime=present-late,
+    inside=kids.filter(k=>last[k.id]&&AT(last[k.id].type)).length,none=total-present,
+    pct=total?Math.round(present/total*100):0;
+  $('dbDate').textContent=new Date().toLocaleDateString('en-PH',{weekday:'long',month:'long',day:'numeric'});
+  const card=(c,ic,l,v,sub)=>`<div class="dbs"><span class="dbi" style="background:${c}">${dbIc(DBI[ic])}</span><div><small>${l}</small><b>${v}</b>${sub?`<i>${sub}</i>`:''}</div></div>`;
+  $('dbStats').innerHTML=card('#2f7fc1','people','Total students',total)+card('var(--ok)','check','Present today',present,pct+'%')+card('#1a8fa0','door','Inside now',inside)+card('#d98e04','clock','Late',late)+card('var(--bad)','x','No tap yet',none);
+  // donut
+  const seg=(v,off,c)=>v?`<circle cx="21" cy="21" r="15.9155" fill="none" stroke="${c}" stroke-width="5.5" stroke-dasharray="${v/Math.max(total,1)*100} ${100-v/Math.max(total,1)*100}" stroke-dashoffset="${25-off/Math.max(total,1)*100}"/>`:'';
+  $('dbOverview').innerHTML=`<div class="dbh">Today's attendance</div><div class="dbdon"><svg viewBox="0 0 42 42" role="img" aria-label="${pct}% present"><circle cx="21" cy="21" r="15.9155" fill="none" stroke="var(--line)" stroke-width="5.5"/>${seg(onTime,0,'var(--ok)')}${seg(late,onTime,'#d98e04')}<text x="21" y="22.5" text-anchor="middle" font-size="8" font-weight="600" fill="currentColor">${pct}%</text></svg>
+    <div class="dbleg"><div><span class="dot" style="background:var(--ok)"></span>On time<b>${onTime}</b></div><div><span class="dot" style="background:#d98e04"></span>Late (after ${t12($('sfCut').value||'07:30')})<b>${late}</b></div><div><span class="dot" style="background:var(--line)"></span>No tap yet<b>${none}</b></div><div style="border-top:1px solid var(--line);padding-top:6px"><span>Total</span><b>${total}</b></div></div></div>`;
+  // recent taps
+  const LBx={in:'IN',out:'OUT',lunch:'LUNCH',back:'BACK'},rec=[...logs].sort((a,b)=>b.time-a.time).slice(0,8);
+  $('dbRecent').innerHTML=`<div class="dbh">Recent taps</div>`+(rec.length?rec.map(l=>`<div class="dbrow">${av(kids.find(k=>k.id===l.kidId)||{name:l.name})}<div class="nm"><strong>${esc(l.name)}</strong><small>${esc(l.section||'')}</small></div><span class="dbchip ${LBx[l.type]?l.type:'out'}">${LBx[l.type]||'OUT'}</span><time>${fmt(l.time)}</time></div>`).join(''):'<p class="note">No taps yet today.</p>');
+  // arrivals per 30 minutes
+  const arr=presentKids.map(k=>Math.floor(mins(first[k.id].time)/30)*30);
+  let ah='<p class="note">No arrivals yet today.</p>';
+  if(arr.length){let a=Math.min(...arr),b=Math.max(...arr);if((b-a)/30>13)a=b-13*30;const cnt={};arr.forEach(m=>{const k=Math.max(m,a);cnt[k]=(cnt[k]||0)+1});
+    const bk=[];for(let m=a;m<=b;m+=30)bk.push(m);const mx=Math.max(...bk.map(m=>cnt[m]||0),1),lb=m=>{const h=Math.floor(m/60);return (h%12||12)+':'+String(m%60).padStart(2,'0')};
+    ah=`<div class="dbcols">${bk.map(m=>`<div><b>${cnt[m]||0}</b><i style="height:${Math.max((cnt[m]||0)/mx*100,2)}%;background:${m>=cut?'#d98e04':'var(--link)'}"></i><span>${lb(m)}</span></div>`).join('')}</div><p class="note" style="margin:8px 0 0">First tap of the day, every 30 minutes. Amber bars are after the late time.</p>`}
+  $('dbArrivals').innerHTML=`<div class="dbh">Arrivals by time</div>`+ah;
+  // sections
+  const secs=[...new Set(kids.map(k=>k.section).filter(Boolean))].sort(cmp),
+    bars=secs.map(n=>{const ks=kids.filter(k=>k.section===n),pr=ks.filter(k=>first[k.id]).length,p=ks.length?Math.round(pr/ks.length*100):0;
+      return `<div class="dbbar" title="${esc(n)}: ${pr} of ${ks.length}"><span>${esc(n)}</span><div><i style="width:${p}%;background:${p>=85?'var(--ok)':p>=70?'#d98e04':'var(--bad)'}"></i></div><span>${p}%</span></div>`}).join('');
+  $('dbSections').innerHTML=`<div class="dbh">Attendance by section</div>`+(bars||'<p class="note">No sections yet.</p>');
+  // needs attention
+  const dt=$('sfDismiss').value,due=!!dt&&new Date().getHours()*60+new Date().getMinutes()>=toMin(dt),nc=kids.filter(k=>!k.uid).length,items=[];
+  const it=(go,cls,t)=>`<button type="button" class="dbat ${cls}" data-go="${go}"><span>${t}</span><span aria-hidden="true">&rsaquo;</span></button>`;
+  if(due&&inside)items.push(it('inside','bad',`${inside} still inside after dismissal`));
+  if(myRole==='admin'&&reqList.length)items.push(it('kids','warn',`${reqList.length} parent change ${reqList.length===1?'request':'requests'}`));
+  if(nc)items.push(it('kids','',`${nc} ${nc===1?'student has':'students have'} no card`));
+  if(visOpen.length)items.push(it('visitors','',`${visOpen.length} ${visOpen.length===1?'visitor':'visitors'} inside`));
+  $('dbAttn').innerHTML=`<div class="dbh">Needs attention</div>`+(items.join('')||'<p class="note">Nothing needs attention right now.</p>');
+  document.querySelectorAll('#dbAttn [data-go]').forEach(b=>b.onclick=()=>showTab(b.dataset.go))}
 // --- My Class: the adviser's home tab (own sections, today's status per student)
 let mcSec='',mcFilter='all',mcId=null;
 function mcStatus(l){return !l?'none':AT(l.type)?'in':l.type==='lunch'?'lunch':'out'}
@@ -1661,7 +1735,7 @@ let reqList=[];
   $(id).onchange=async e=>{const c=e.target;
     try{await setDoc(doc(db,'settings','school'),{[key]:c.checked},{merge:true});toast(c.checked?on:off)}
     catch(x){c.checked=!c.checked;toast('Could not save the setting.')}}});
-function renderReq(){
+function renderReq(){renderDashboard();
   const box=$('reqBox');
   if(!reqList.length){box.innerHTML='';return}
   box.innerHTML=`<strong>Change requests from parents (${reqList.length})</strong><p class="note">Make the change with the child's Edit button, then mark the request done.</p>`
