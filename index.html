@@ -440,6 +440,8 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
     <p class="note">A child who taps to leave inside this window is recorded as "Out for lunch"; the next tap is "Back from lunch". Clear both times to turn this off.</p>
     <div class="frm c2"><div><label for="sfDismiss">Dismissal check (time)</label><input id="sfDismiss" type="time" value="17:00"></div></div>
     <p class="note">From this time on, the Inside tab warns about children who are still inside school. Clear the time to turn the warning off.</p>
+    <div class="frm"><div><label for="sfDisplay">TV display (/display.html): what the hallway screen shows</label><select id="sfDisplay"><option value="full">Full name and photo</option><option value="first">First name and photo only</option><option value="initials">Initials only (no photo)</option></select></div></div>
+    <p class="note">Choose what your parents agreed to under the Data Privacy Act.</p>
   </div>
   <div class="card">
     <strong>Logos</strong>
@@ -525,7 +527,7 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
     <div class="frm"><div><label for="sEmail">Email</label><input id="sEmail" type="email" autocomplete="off"></div></div>
     <div class="frm c2"><div><label for="sPhone">Contact number</label><input id="sPhone" inputmode="tel" placeholder="09xx xxx xxxx" autocomplete="off"></div>
       <div><label for="sGender">Gender</label><select id="sGender"><option value="">Select...</option><option value="M">Male</option><option value="F">Female</option></select></div></div>
-    <div class="frm"><div><label for="sRole">Role</label><select id="sRole"><option value="adviser">Teacher / Class adviser (sees only assigned sections)</option><option value="gate">Gate staff (taps only)</option><option value="head">School head (views all sections, cannot change anything)</option><option value="admin">Admin (full control of the app)</option></select></div></div>
+    <div class="frm"><div><label for="sRole">Role</label><select id="sRole"><option value="adviser">Teacher / Class adviser (sees only assigned sections)</option><option value="gate">Gate staff (taps only)</option><option value="head">School head (views all sections, cannot change anything)</option><option value="display">TV display (read-only, for the hallway screen)</option><option value="admin">Admin (full control of the app)</option></select></div></div>
     <div class="frm c2" id="sAdvWrap"><div><label for="sGrade">Advisory grade</label><select id="sGrade"></select></div>
       <div><label for="sSecName">Advisory section</label><select id="sSecName"></select></div></div>
     <div class="frm"><div><label for="sPw">Temporary password (at least 6 characters)</label><input id="sPw" type="text" autocomplete="off"></div></div>
@@ -623,6 +625,7 @@ onAuthStateChanged(auth,async user=>{
   unsub.forEach(u=>u());unsub=[];
   let admin=false;
   if(user){let ok=false;try{const sd=await getDoc(doc(db,'staff',user.uid));ok=sd.exists();if(ok){myRole=sd.data().role||'staff';mySecs=sd.data().sections||[];myName=sd.data().name||''}admin=ok&&myRole==='admin'}catch(e){}
+    if(ok&&myRole==='display'){$('loginMsg').textContent='This account is for the TV screen. Open display.html on the TV instead.';signOut(auth);return}
     if(!ok){$('loginMsg').textContent='This account is not a staff account. Check the staff document in Firestore: its Document ID must be the User UID of this account.';signOut(auth);return}$('loginMsg').textContent=''}
   $('login').hidden=!!user;document.body.classList.toggle('is-login',!user);$('app').hidden=!user;$('nav').hidden=!user;$('outBtn').hidden=!user;$('pwBtn').hidden=!user;if(!user)$('pwCard').hidden=true;$('navStaff').hidden=!admin;$('navManage').hidden=!admin;
   if(!user)return;
@@ -1184,13 +1187,15 @@ function applySchool(d,admin){
   const miss={};
   SCHMAP.forEach(([k,i])=>{if(k in d)$(i).value=d[k]||(k==='lateAfter'?'07:30':'');else if(admin){const v=schoolLocal()[k];if(v)miss[k]=v}});
   if('schoolLogo' in d)schLogo=d.schoolLogo||'';else if(admin&&schLogo)miss.schoolLogo=schLogo;
+  $('sfDisplay').value=['full','first','initials'].includes(d.displayMode)?d.displayMode:'full';
   cacheLogo();$('sfSchool').onchange();renderBrand();lockSchool();
   if(admin&&Object.keys(miss).length)pushSchool(miss,'School details are now shared with every device')}
 function lockSchool(){
   const ro=myRole!=='admin'&&(schoolShared||myRole==='head');
-  ['sfSchool','sfYear','sfId','sfHead','sfCut','sfLunchA','sfLunchB','sfDismiss','schLogoFile','schLogoDel'].forEach(i=>{$(i).disabled=ro});
+  ['sfSchool','sfYear','sfId','sfHead','sfCut','sfLunchA','sfLunchB','sfDismiss','sfDisplay','schLogoFile','schLogoDel'].forEach(i=>{$(i).disabled=ro});
   $('schNote').textContent=ro?'Used on every SF2 report. The school details and logos are set by the admin for all devices.':!schoolShared?'Used on every SF2 report. Saved on this device.':'Used on every SF2 report. The school details and logos are shared with every device.'}
 ['sfSchool','sfYear','sfId','sfHead','sfCut','sfLunchA','sfLunchB','sfDismiss'].forEach(i=>$(i).addEventListener('change',()=>{if(myRole==='admin')pushSchool(schoolLocal(),'School details saved for all devices')}));
+$('sfDisplay').addEventListener('change',()=>{if(myRole==='admin')pushSchool({displayMode:$('sfDisplay').value},'TV display setting saved')});
 $('heroSet').onclick=()=>{showTab('school');$('sfSchool').focus()};
 ['sfSchool','sfYear'].forEach(i=>$(i).addEventListener('input',renderBrand));
 renderBrand();
@@ -1279,7 +1284,7 @@ $('seSave').onclick=async()=>{
   finally{$('seSave').disabled=false}};
 // --- staff management (admins only)
 // --- Staff tab: filter by role / grade / section, grouped by role or advisory section
-const STROLES={admin:'Admin',head:'School head',adviser:'Teacher / Adviser',gate:'Gate staff'},STORDER=['admin','head','adviser','gate'];
+const STROLES={admin:'Admin',head:'School head',adviser:'Teacher / Adviser',gate:'Gate staff',display:'TV display'},STORDER=['admin','head','adviser','gate','display'];
 const stRoleName=r=>STROLES[r]||'Staff',stRoleOf=x=>x.role||'staff',stSecs=x=>x.sections||[];
 function fillStaffFilter(){
   const o=(v,t,on)=>`<option value="${esc(v)}"${on?' selected':''}>${esc(t)}</option>`,gOf=n=>splitSec(n)[0];
