@@ -262,7 +262,7 @@ onAuthStateChanged(auth,user=>{
   if(unsubB){unsubB();unsubB=null}
   annMax=0;annReady=false;$('ann').innerHTML='';
   allLogs=null;$('kids').innerHTML='';$('report').innerHTML='';$('annBadge').hidden=true;{const n=new Date();repY=n.getFullYear();repM=n.getMonth()}setTab('att');
-  unsubC.forEach(u=>u());unsubC=[];closeModal();kidsReady=false;myKids=[];myReqs=[];open={};$('contacts').innerHTML='';
+  unsubC.forEach(u=>u());unsubC=[];closeModal();kidsReady=false;myKids=[];myReqs=[];myReports=[];open={};$('contacts').innerHTML='';
   $('who').textContent='';
   $('outBtn').hidden=!user;$('pwBtn').hidden=!(user&&user.emailVerified);if(!user)$('pwCard').hidden=true;$('login').hidden=!!user;document.body.classList.toggle('is-login',!user);$('verify').hidden=true;$('app').hidden=true;
   if(!user)return;
@@ -288,7 +288,8 @@ function start(user){$('pwBtn').hidden=false;
   unsubC=[
     onSnapshot(query(collection(db,'kids'),where('parentEmails','array-contains',em)),s=>{kidsReady=true;myKids=s.docs.map(d=>({id:d.id,...d.data()}));renderContacts();if(allLogs)render(allLogs);renderReport()},()=>{}),
     onSnapshot(doc(db,'settings','school'),s=>{const d=s.exists()?s.data():{};parentEdit=!!d.parentEdit;parentReq=!!d.parentRequests;showBrand(d);renderContacts();renderReport()},()=>{parentEdit=false;parentReq=false;renderContacts()}),
-    onSnapshot(query(collection(db,'changeRequests'),where('parentEmail','==',em)),s=>{myReqs=s.docs.map(d=>({id:d.id,...d.data()}));renderContacts()},()=>{})];
+    onSnapshot(query(collection(db,'changeRequests'),where('parentEmail','==',em)),s=>{myReqs=s.docs.map(d=>({id:d.id,...d.data()}));renderContacts()},()=>{}),
+    onSnapshot(query(collection(db,'childReports'),where('parentEmail','==',em)),s=>{myReports=s.docs.map(d=>({id:d.id,...d.data()}));if(mKid)renderModal()},()=>{})];
   setAlertBox()}
 
 // --- school announcements (broadcasts)
@@ -363,12 +364,25 @@ function mRange(){
   const n=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();return[...Array(n)].map((_,i)=>new Date(d.getFullYear(),d.getMonth(),i+1))}
 function mStats(days){const c={present:0,late:0,absent:0};days.forEach(x=>{if(x.st in c)c[x.st]++});const att=c.present+c.late,den=att+c.absent;return{att,late:c.late,absent:c.absent,rate:den?Math.round(att/den*100)+'%':'\u2013'}}
 const statTiles=s=>`<div class="mg"><div class="mt g"><b>${s.att}</b><span>Days present</span></div><div class="mt a"><b>${s.late}</b><span>Tardy</span></div><div class="mt r"><b>${s.absent}</b><span>Absent</span></div><div class="mt b"><b>${s.rate}</b><span>Attendance rate</span></div></div>`;
-function dayBody(x){
+// Today only: lets a parent tell the school that an arrival that was recorded is wrong (their child is not at school).
+function reportBlock(k,x){
+  const mine=myReports.filter(r=>r.kidId===k.id&&dk(r.time)===dk(Date.now())).sort((a,b)=>b.time-a.time)[0];
+  if(mine){
+    const txt={open:'You told the school. They are checking now.',at_school:'The school checked: your child is at school.',not_at_school:'The school confirmed your child is not at school and is following up.'}[mine.status]||'';
+    return `<div class="card" style="margin-top:12px"><strong>Reported at ${tm(mine.time)}</strong><p class="note">${esc(txt)}</p>${mine.note?`<p>${esc(mine.note)}</p>`:''}</div>`}
+  return `<p class="note" style="margin-top:12px">Was this arrival a mistake?</p><button type="button" class="btn alt sm" data-act="report" data-tap="${x.arr.time}">My child isn't at school</button>`}
+async function reportKid(tap){
+  const k=myKids.find(x=>x.id===mKid);if(!k)return;
+  if(!confirm('Tell the school that '+k.name+' is not at school?\n\nThe school will check right away.'))return;
+  const note=prompt('Add a note for the school (optional):','');if(note===null)return;
+  try{await addDoc(collection(db,'childReports'),{kidId:k.id,kidName:String(k.name||'').slice(0,120),section:String(k.section||'').slice(0,80),parentEmail:auth.currentUser.email,tapTime:+tap,message:note.trim().slice(0,300),time:Date.now(),status:'open'});toast('Reported to the school.')}
+  catch(err){toast('Could not send the report. Please try again.')}}
+function dayBody(x,k){
   const m=MS[x.st],cls={present:'ok',late:'lunch',absent:'bad'}[x.st]||'none',isToday=x.key===ymd(new Date());
   const sub=x.arr?'Arrived '+tm(x.arr.time):({absent:'No tap recorded',off:'Weekend',future:'Not yet'})[x.st]||'';
-  const taps=x.a.length?`<div class="day">All taps</div>`+x.a.map(t=>`<div class="row"><span>${({in:'Arrived',out:'Left',lunch:'Out for lunch',back:'Back from lunch'})[t.type]||'Left'}</span><span class="pill ${t.type==='in'||t.type==='back'?'in':''}">${tm(t.time)}</span></div>`).join(''):'';
+  const taps=x.a.length?`<div class="day">All taps</div>`+x.a.map(t=>`<div class="row"><span>${({in:'Arrived',out:'Left',lunch:'Out for lunch',back:'Back from lunch'})[t.type]||'Left'}${t.manual?' (manual check-in)':''}</span><span class="pill ${t.type==='in'||t.type==='back'?'in':''}">${tm(t.time)}</span></div>`).join(''):'';
   return `<div class="st ${cls}"><span class="ic">${ic(m[1])}</span><div><strong>${m[0]}</strong><div class="note">${esc(sub)}</div></div></div>`
-    +`<div class="ab"><div class="a1"><small>Arrived</small><b>${x.arr?tm(x.arr.time):'\u2013'}</b></div><div class="a2"><small>Left</small><b>${x.left?tm(x.left.time):(x.arr?(isToday?'Not yet':'No tap'):'\u2013')}</b></div></div>`+taps}
+    +`<div class="ab"><div class="a1"><small>Arrived</small><b>${x.arr?tm(x.arr.time):'\u2013'}</b></div><div class="a2"><small>Left</small><b>${x.left?tm(x.left.time):(x.arr?(isToday?'Not yet':'No tap'):'\u2013')}</b></div></div>`+taps+(isToday&&x.arr?reportBlock(k,x):'')}
 function weekBody(days){
   return statTiles(mStats(days))+`<div class="wr wh"><span>Day</span><span>Status</span><span>In</span><span>Out</span></div>`
     +days.map(x=>{const m=MS[x.st];return `<button type="button" class="wr" data-go="${x.key}"><span>${esc(fd(x.d,{weekday:'short',month:'short',day:'numeric'}))}</span><span class="pill ${m[2]}">${m[0]}</span><span>${x.arr?tm(x.arr.time):'\u2013'}</span><span>${x.left?tm(x.left.time):'\u2013'}</span></button>`}).join('')}
@@ -380,7 +394,7 @@ function renderModal(){
   const k=myKids.find(x=>x.id===mKid);if(!k){closeModal();return}
   const m=kidMap(mKid),days=mRange().map(d=>dInfo(m,d)),d0=sod(mDate),today=sod(new Date()),canNext=days[days.length-1].d<today;
   const label=mView==='day'?fd(d0,{weekday:'long',month:'long',day:'numeric',year:'numeric'}):mView==='week'?fd(days[0].d,{month:'short',day:'numeric'})+' \u2013 '+fd(days[6].d,{month:'short',day:'numeric',year:'numeric'}):fd(d0,{month:'long',year:'numeric'});
-  const body=mView==='day'?dayBody(days[0]):mView==='week'?weekBody(days):monthBody(days);
+  const body=mView==='day'?dayBody(days[0],k):mView==='week'?weekBody(days):monthBody(days);
   let el=$('kmodal');
   if(!el){el=document.createElement('div');el.id='kmodal';el.className='mo';document.body.appendChild(el);el.onclick=modalClick;el.onchange=e=>{if(e.target.id==='mDateIn'&&e.target.value){const [y,mo,d]=e.target.value.split('-').map(Number);mDate=new Date(y,mo-1,d);renderModal()}}}
   const old=el.querySelector('.ms'),top=old?old.scrollTop:0;
@@ -393,6 +407,7 @@ function renderModal(){
 function modalClick(e){
   const t=e.target;
   if(t.id==='kmodal'||t.closest('[data-act="close"]'))return closeModal();
+  const rp=t.closest('[data-act="report"]');if(rp)return reportKid(rp.dataset.tap);
   const v=t.closest('[data-view]');if(v){mView=v.dataset.view;return renderModal()}
   const s=t.closest('[data-step]');if(s)return stepDate(+s.dataset.step);
   const g=t.closest('[data-go]');if(g){const [y,mo,d]=g.dataset.go.split('-').map(Number);mDate=new Date(y,mo-1,d);mView='day';renderModal()}}
@@ -422,7 +437,7 @@ function renderReport(){
 $('report').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;const d=new Date(repY,repM+ +b.dataset.m,1);repY=d.getFullYear();repM=d.getMonth();renderReport()};
 
 // --- contact details and change requests
-let kidsReady=false,myKids=[],myReqs=[],parentEdit=false,parentReq=false,open={};
+let kidsReady=false,myKids=[],myReqs=[],myReports=[],parentEdit=false,parentReq=false,open={};
 const reqTxt={pending:'Waiting for the school',done:'Done',declined:'Declined'};
 const okPhone=v=>/^[0-9+\-() ]{7,30}$/.test(v)&&v.replace(/\D/g,'').length>=7;
 function renderContacts(){if(Object.keys(open).length)return;drawContacts()}
