@@ -140,6 +140,30 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%;text-align:center}
 #toast.on{opacity:1}
+
+/* ---------- Responsive layout: phone (default) / tablet & laptop (700px+) / desktop (1000px+). Tabs stay on top; content uses the width. ---------- */
+@media screen and (min-width:700px){
+  main{max-width:900px;padding:24px}
+  .ms{max-width:640px}
+  .tabs{max-width:640px}
+  #pwCard,#verify,#installBox,#alertBox{max-width:520px}
+  /* child cards: same size on every screen, as many per row as fit */
+  .kg,.kg.m{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+  .kt,.kg.m .kt{height:380px;border-radius:24px}
+  .kg.m .kt .ph{font-size:5rem}
+  .kg.m .kt .sp{top:14px;left:14px;gap:8px;max-width:calc(100% - 28px);font-size:.95rem;padding:7px 14px}
+  .kg.m .kt .sp i{width:11px;height:11px}
+  .kg.m .kt .nm{padding:16px}.kg.m .kt .nm b{font-size:1.25rem}.kg.m .kt .nm small{font-size:.95rem}
+  .kg.m .kt .tl{margin-top:12px;font-size:.95rem}.kg.m .kt .tl strong{font-size:1.15rem}
+  #contacts,#report,#ann{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;align-items:start}
+  #contacts>.day,#report>.mnav,#report>.note,#ann>.row{grid-column:1/-1}
+  #contacts>.card,#report>.card,#ann>.card{margin:0}
+}
+@media screen and (min-width:1000px){
+  main{max-width:1180px;padding:28px 36px 48px}
+  .tabs{max-width:720px}
+  #contacts,#report,#ann{grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px}
+}
 </style>
 </head>
 <body>
