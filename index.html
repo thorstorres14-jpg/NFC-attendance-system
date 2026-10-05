@@ -144,7 +144,7 @@ main:has(#tab-sf2.on){max-width:1180px}
 .fr .frac{display:grid;justify-self:center;width:max-content;max-width:100%;text-align:center}.fr .frac b{padding:0 6px}.fr>span:last-child{text-align:left}
 /* narrow phones: seven tabs must fit in the bottom bar */
 @media screen and (max-width:520px){nav{gap:2px;padding-left:4px;padding-right:4px;overflow-x:auto;justify-content:safe center;scrollbar-width:none}nav button{flex:1 0 auto;font-size:.72rem;padding:10px 4px}}
-/* Manage tab sections */
+/* School tab sections */
 .seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.seg button{flex:1;min-width:0;padding:9px 6px;border:1.5px solid var(--line);border-radius:12px;background:transparent;color:var(--mute);font:inherit;font-size:.85rem;font-weight:500;cursor:pointer}
 .seg button[aria-selected="true"]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
 /* Dashboard (admin and school head) */
@@ -238,10 +238,11 @@ button{cursor:pointer}
   /* Tap tab: scanner on the left, "try without NFC" on the right */
   #tab-tap.on{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start}
   #tab-tap>.zone{grid-column:1;grid-row:1}#tab-tap>#result{grid-column:1;grid-row:2}#tab-tap>.card{grid-column:2;grid-row:1/span 2;margin:0}
-  /* Manage > Grades & sections */
-  #mp-acc>.card{max-width:640px}
-  #tab-school.on{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
-  #tab-school>.card{margin:0}
+  /* Requests > Parent access; School > profile / tap rules */
+  #parentBox>.card{max-width:640px}
+  #sp-prof:not([hidden]){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+  #sp-prof>.card{margin:0}
+  #sp-rules>.card{max-width:640px}
   .seg{max-width:620px}
 }
 @media screen and (min-width:1000px) and (hover:hover){
@@ -548,16 +549,18 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
 </section>
 
 <section id="tab-school">
+  <div class="seg" role="tablist" aria-label="School sections">
+    <button type="button" role="tab" aria-selected="true" data-sp="prof">School profile</button>
+    <button type="button" role="tab" aria-selected="false" data-sp="rules">Tap rules</button>
+    <button type="button" role="tab" aria-selected="false" data-sp="sec" id="spSecBtn" hidden>Grades &amp; sections</button>
+  </div>
+  <div class="spanel" id="sp-prof">
   <div class="card">
     <strong>School details</strong>
     <p class="note" id="schNote">Used on every SF2 report. Saved on this device.</p>
     <div class="frm c2"><div><label for="sfSchool">School name</label><input id="sfSchool" autocomplete="off"></div><div><label for="sfId">School ID</label><input id="sfId" autocomplete="off"></div></div>
     <div class="frm"><div><label for="sfHead">School head</label><input id="sfHead" autocomplete="off"></div></div>
-    <div class="frm c2"><div><label for="sfYear">School year (e.g. 2026-2027)</label><input id="sfYear" autocomplete="off"></div><div><label for="sfCut">Late after (time)</label><input id="sfCut" type="time" value="07:30"></div></div>
-    <div class="frm c2"><div><label for="sfLunchA">Lunch break from</label><input id="sfLunchA" type="time" value="11:00"></div><div><label for="sfLunchB">Lunch break until</label><input id="sfLunchB" type="time" value="13:00"></div></div>
-    <p class="note">A child who taps to leave inside this window is recorded as "Out for lunch"; the next tap is "Back from lunch". Clear both times to turn this off.</p>
-    <div class="frm c2"><div><label for="sfDismiss">Dismissal check (time)</label><input id="sfDismiss" type="time" value="17:00"></div></div>
-    <p class="note">From this time on, the Inside tab warns about children who are still inside school. Clear the time to turn the warning off.</p>
+    <div class="frm"><div><label for="sfYear">School year (e.g. 2026-2027)</label><input id="sfYear" autocomplete="off"></div></div>
   </div>
   <div class="card">
     <strong>Logos</strong>
@@ -568,6 +571,31 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
     <div class="row"><img id="sfLogoPrev" alt="Logo left" style="width:48px;height:48px;object-fit:contain"><span><input type="file" id="sfLogoFile" accept="image/*"> <button class="btn alt sm" id="sfLogoReset" type="button">Use default</button></span></div>
     <label for="sfLogoFile2">Logo, upper right (DepEd logo by default)</label>
     <div class="row"><img id="sfLogoPrev2" alt="Logo right" style="width:96px;height:48px;object-fit:contain"><span><input type="file" id="sfLogoFile2" accept="image/*"> <button class="btn alt sm" id="sfLogoReset2" type="button">Use default</button></span></div>
+  </div>
+  </div>
+  <div class="spanel" id="sp-rules" hidden>
+  <div class="card">
+    <strong>Tap rules</strong>
+    <p class="note">When a tap counts as late, and how lunch and dismissal are handled.</p>
+    <div class="frm c2"><div><label for="sfCut">Late after (time)</label><input id="sfCut" type="time" value="07:30"></div></div>
+    <div class="frm c2"><div><label for="sfLunchA">Lunch break from</label><input id="sfLunchA" type="time" value="11:00"></div><div><label for="sfLunchB">Lunch break until</label><input id="sfLunchB" type="time" value="13:00"></div></div>
+    <p class="note">A child who taps to leave inside this window is recorded as "Out for lunch"; the next tap is "Back from lunch". Clear both times to turn this off.</p>
+    <div class="frm c2"><div><label for="sfDismiss">Dismissal check (time)</label><input id="sfDismiss" type="time" value="17:00"></div></div>
+    <p class="note">From this time on, the Inside tab warns about children who are still inside school. Clear the time to turn the warning off.</p>
+  </div>
+  </div>
+  <div class="spanel" id="sp-sec" hidden>
+    <p class="row"><button class="btn" id="openSec" type="button">+ Add grade &amp; section</button></p>
+    <div class="modal" id="secModal" role="dialog" aria-modal="true" aria-labelledby="secModalTitle" hidden>
+      <div class="modal-box">
+        <strong id="secModalTitle" class="mh">Add a grade and section</strong>
+        <label for="mGrade">Grade (e.g. Grade 3)</label><input id="mGrade" autocomplete="off">
+        <label for="mSec">Section (e.g. Rizal)</label><input id="mSec" autocomplete="off">
+        <p class="row" style="margin-top:12px"><button class="btn" id="addSec" type="button">Add</button><button class="btn alt" id="secCancel" type="button">Cancel</button></p>
+      </div>
+    </div>
+    <div id="secList"></div>
+  
   </div>
 </section>
 
@@ -588,6 +616,14 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
 
 <section id="tab-requests">
   <div id="reqBox"></div>
+  <div id="parentBox" hidden>
+    <div class="card">
+      <strong>Parent access</strong>
+      <label class="chk"><input type="checkbox" id="parentEditChk"> Let parents edit their contact details (mobile number and alternate contact)</label>
+      <label class="chk"><input type="checkbox" id="parentReqChk"> Let parents send change requests (for names, sections and other details)</label>
+      <p class="note">Parents can never change names, sections, cards or the email list themselves. Their requests appear in the list above for you to review.</p>
+    </div>
+  </div>
 </section>
 
 <section id="tab-tv">
@@ -614,35 +650,6 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
       <div id="bcUntilBox"><label for="bcUntil">Show on TV until (optional)</label><input id="bcUntil" type="datetime-local"><p class="note">If left empty, it stays on the TV for 7 days.</p></div>
       <p class="row" style="margin-top:12px"><button class="btn" id="bcSend" type="button">Send</button><button class="btn alt" id="bcCancel" type="button">Cancel</button></p>
     </div>
-  </div>
-</section>
-
-<section id="tab-manage">
-  <div class="seg" role="tablist" aria-label="Manage sections">
-    <button type="button" role="tab" aria-selected="true" data-mp="acc">Parent access</button>
-    <button type="button" role="tab" aria-selected="false" data-mp="sec">Grades &amp; sections</button>
-  </div>
-
-  <div class="mpanel" id="mp-acc">
-    <div class="card">
-      <strong>Parent access</strong>
-      <label class="chk"><input type="checkbox" id="parentEditChk"> Let parents edit their contact details (mobile number and alternate contact)</label>
-      <label class="chk"><input type="checkbox" id="parentReqChk"> Let parents send change requests (for names, sections and other details)</label>
-      <p class="note">Parents can never change names, sections, cards or the email list themselves. Their requests appear at the top of the Children tab for you to review.</p>
-    </div>
-  </div>
-
-  <div class="mpanel" id="mp-sec" hidden>
-    <p class="row"><button class="btn" id="openSec" type="button">+ Add grade &amp; section</button></p>
-    <div class="modal" id="secModal" role="dialog" aria-modal="true" aria-labelledby="secModalTitle" hidden>
-      <div class="modal-box">
-        <strong id="secModalTitle" class="mh">Add a grade and section</strong>
-        <label for="mGrade">Grade (e.g. Grade 3)</label><input id="mGrade" autocomplete="off">
-        <label for="mSec">Section (e.g. Rizal)</label><input id="mSec" autocomplete="off">
-        <p class="row" style="margin-top:12px"><button class="btn" id="addSec" type="button">Add</button><button class="btn alt" id="secCancel" type="button">Cancel</button></p>
-      </div>
-    </div>
-    <div id="secList"></div>
   </div>
 </section>
 
@@ -721,7 +728,6 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
   <button role="tab" aria-selected="false" data-tab="school">School</button>
   <button role="tab" aria-selected="false" data-tab="announce" id="navAnnounce" hidden>Announcement</button>
   <button role="tab" aria-selected="false" data-tab="tv" id="navTv" hidden>TV Display</button>
-  <button role="tab" aria-selected="false" data-tab="manage" id="navManage" hidden>Manage</button>
   <button role="tab" aria-selected="false" data-tab="staff" id="navStaff" hidden>Staff</button>
 </nav>
 <div id="toast" role="status"></div>
@@ -778,7 +784,7 @@ onAuthStateChanged(auth,async user=>{
   if(user){let ok=false;try{const sd=await getDoc(doc(db,'staff',user.uid));ok=sd.exists();if(ok){myRole=sd.data().role||'staff';mySecs=sd.data().sections||[];myName=sd.data().name||''}admin=ok&&myRole==='admin'}catch(e){}
     if(ok&&myRole==='display'){$('loginMsg').textContent='This account is for the TV screen. Open display.html on the TV instead.';signOut(auth);return}
     if(!ok){$('loginMsg').textContent='This account is not a staff account. Check the staff document in Firestore: its Document ID must be the User UID of this account.';signOut(auth);return}$('loginMsg').textContent=''}
-  $('login').hidden=!!user;document.body.classList.toggle('is-login',!user);$('app').hidden=!user;$('nav').hidden=!user;$('outBtn').hidden=!user;$('pwBtn').hidden=!user;if(!user)$('pwCard').hidden=true;$('navStaff').hidden=!admin;$('navManage').hidden=!admin;$('navAnnounce').hidden=!admin;$('navTv').hidden=!admin;
+  $('login').hidden=!!user;document.body.classList.toggle('is-login',!user);$('app').hidden=!user;$('nav').hidden=!user;$('outBtn').hidden=!user;$('pwBtn').hidden=!user;if(!user)$('pwCard').hidden=true;$('navStaff').hidden=!admin;$('spSecBtn').hidden=!admin;$('parentBox').hidden=!admin;setSp('prof');$('navAnnounce').hidden=!admin;$('navTv').hidden=!admin;
   if(!user)return;
   const vis={dashboard:myRole==='admin'||myRole==='head',myclass:myRole==='adviser',tap:myRole!=='adviser'&&myRole!=='head',kids:myRole==='admin'||myRole==='staff',requests:myRole==='admin'||myRole==='staff',log:true,inside:true,visitors:myRole!=='adviser',sf2:myRole!=='gate',school:myRole!=='gate'};
   Object.entries(vis).forEach(([t,v])=>document.querySelector('nav [data-tab='+t+']').hidden=!v);
@@ -1151,7 +1157,7 @@ const secBoxes=x=>{const sp=n=>{const a=n.split(' - ');return [a[0],a.slice(1).j
   secList.forEach(z=>{const [g,sc]=sp(z.name);(G[g]||(G[g]=[])).push({z,sc})});
   const cb=(z,t)=>`<label class="chk"><input type="checkbox" data-sc="${x.id}" value="${esc(z.name)}"${(x.sections||[]).includes(z.name)?' checked':''}> ${esc(t)}</label>`;
   return `<div style="margin-top:8px"><div class="note">Sections this adviser can see:</div>${secList.length?Object.keys(G).sort(cmp).map(g=>{const it=G[g].sort((a,b)=>cmp(a.sc,b.sc));
-    return it.length===1&&!it[0].sc?cb(it[0].z,it[0].z.name):`<div class="note" style="margin-top:6px"><strong>${esc(g)}</strong></div><div style="margin-left:14px">${it.map(i=>cb(i.z,i.sc||g)).join('')}</div>`}).join(''):'<div class="note">Add sections in the Manage tab first.</div>'}</div>`};
+    return it.length===1&&!it[0].sc?cb(it[0].z,it[0].z.name):`<div class="note" style="margin-top:6px"><strong>${esc(g)}</strong></div><div style="margin-left:14px">${it.map(i=>cb(i.z,i.sc||g)).join('')}</div>`}).join(''):'<div class="note">Add sections in School &gt; Grades &amp; sections first.</div>'}</div>`};
 
 // --- SF2 (Daily Attendance Report of Learners)
 // SF2-CORE-START
@@ -1444,7 +1450,7 @@ function lockSchool(){
 ['sfSchool','sfYear','sfId','sfHead','sfCut','sfLunchA','sfLunchB','sfDismiss'].forEach(i=>$(i).addEventListener('change',()=>{if(myRole==='admin')pushSchool(schoolLocal(),'School details saved for all devices')}));
 $('sfDisplay').addEventListener('change',()=>{if(myRole==='admin')pushSchool({displayMode:$('sfDisplay').value},'TV display setting saved')});
 $('sfLayout').addEventListener('change',()=>{if(myRole==='admin')pushSchool({displayLayout:$('sfLayout').value},'TV layout saved')});
-$('heroSet').onclick=()=>{showTab('school');$('sfSchool').focus()};
+$('heroSet').onclick=()=>{setSp('prof');showTab('school');$('sfSchool').focus()};
 ['sfSchool','sfYear'].forEach(i=>$(i).addEventListener('input',renderBrand));
 renderBrand();
 function tickClock(){
@@ -1723,10 +1729,10 @@ $('addStaff').onclick=async()=>{
   }catch(e){toast(e.code==='auth/email-already-in-use'?'That email already has an account. Use a different email.':'Could not add staff ('+(e.code||e.message)+').')}
   finally{try{await signOut(auth2)}catch(x){}}};
 
-// --- Manage tab: switch between Parent access / Grades & sections
-document.querySelectorAll('[data-mp]').forEach(b=>b.onclick=()=>{
-  document.querySelectorAll('[data-mp]').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
-  document.querySelectorAll('.mpanel').forEach(p=>p.hidden=p.id!=='mp-'+b.dataset.mp)});
+// --- School tab: switch between School profile / Tap rules / Grades & sections
+function setSp(k){document.querySelectorAll('[data-sp]').forEach(x=>x.setAttribute('aria-selected',String(x.dataset.sp===k)));
+  document.querySelectorAll('.spanel').forEach(p=>p.hidden=p.id!=='sp-'+k)}
+document.querySelectorAll('[data-sp]').forEach(b=>b.onclick=()=>setSp(b.dataset.sp));
 // --- broadcast to all parents (admins only)
 let bcList=[];
 function openBc(){$('bcModal').hidden=false;document.body.classList.add('modal-open');$('bcModal').firstElementChild.scrollTop=0;setTimeout(()=>$('bcTitle').focus(),50)}
