@@ -433,7 +433,6 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
 </section>
 
 <section id="tab-kids">
-  <div id="reqBox"></div>
   <p class="row"><button class="btn" id="openAdd" type="button">+ Add child</button></p>
   <div class="modal" id="kidModal" role="dialog" aria-modal="true" aria-labelledby="formTitle" hidden>
     <div class="modal-box">
@@ -559,9 +558,6 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
     <p class="note">A child who taps to leave inside this window is recorded as "Out for lunch"; the next tap is "Back from lunch". Clear both times to turn this off.</p>
     <div class="frm c2"><div><label for="sfDismiss">Dismissal check (time)</label><input id="sfDismiss" type="time" value="17:00"></div></div>
     <p class="note">From this time on, the Inside tab warns about children who are still inside school. Clear the time to turn the warning off.</p>
-    <div class="frm"><div><label for="sfDisplay">TV display (/display.html): what the hallway screen shows</label><select id="sfDisplay"><option value="full">Full name and photo</option><option value="first">First name and photo only</option><option value="initials">Initials only (no photo)</option></select></div></div>
-    <div class="frm"><div><label for="sfLayout">TV display layout</label><select id="sfLayout"><option value="cards">Cards (10 big photo cards, easy to read from far)</option><option value="list">List (30 children at once, one row each)</option></select></div></div>
-    <p class="note">Choose what your parents agreed to under the Data Privacy Act.</p>
   </div>
   <div class="card">
     <strong>Logos</strong>
@@ -590,28 +586,44 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
   <div id="sfOut"></div>
 </section>
 
+<section id="tab-requests">
+  <div id="reqBox"></div>
+</section>
+
+<section id="tab-tv">
+  <div class="card">
+    <strong>TV display</strong>
+    <p class="note">What the hallway screen (display.html) shows. Changes apply to the TV right away.</p>
+    <div class="frm"><div><label for="sfDisplay">TV display (/display.html): what the hallway screen shows</label><select id="sfDisplay"><option value="full">Full name and photo</option><option value="first">First name and photo only</option><option value="initials">Initials only (no photo)</option></select></div></div>
+    <div class="frm"><div><label for="sfLayout">TV display layout</label><select id="sfLayout"><option value="cards">Cards (10 big photo cards, easy to read from far)</option><option value="list">List (30 children at once, one row each)</option></select></div></div>
+    <p class="note">Choose what your parents agreed to under the Data Privacy Act.</p>
+    <p class="row" style="margin-top:12px"><a class="btn alt" href="display.html" target="_blank" rel="noopener">Open TV display</a></p>
+  </div>
+</section>
+
+<section id="tab-announce">
+  <p class="row"><button class="btn" id="openBc" type="button">+ Add announcement</button></p>
+  <div id="bcList"></div>
+  <div class="modal" id="bcModal" role="dialog" aria-modal="true" aria-labelledby="bcModalTitle" hidden>
+    <div class="modal-box">
+      <strong id="bcModalTitle" class="mh">Announce to all parents</strong>
+      <p class="note">Choose who sees it: every parent's Tap-In app, the hallway TV, or both. Use Parents for urgent notices such as class suspensions.</p>
+      <label for="bcTitle">Title (optional)</label><input id="bcTitle" maxlength="100" autocomplete="off" placeholder="School announcement">
+      <label for="bcBody">Message</label><textarea id="bcBody" maxlength="1000" placeholder="Due to the weather conditions, there will be no classes tomorrow because of the typhoon."></textarea>
+      <label for="bcAud">Send to</label><select id="bcAud"><option value="both">Parents and TV</option><option value="parents">Parents only</option><option value="tv">TV only</option></select>
+      <div id="bcUntilBox"><label for="bcUntil">Show on TV until (optional)</label><input id="bcUntil" type="datetime-local"><p class="note">If left empty, it stays on the TV for 7 days.</p></div>
+      <p class="row" style="margin-top:12px"><button class="btn" id="bcSend" type="button">Send</button><button class="btn alt" id="bcCancel" type="button">Cancel</button></p>
+    </div>
+  </div>
+</section>
+
 <section id="tab-manage">
   <div class="seg" role="tablist" aria-label="Manage sections">
-    <button type="button" role="tab" aria-selected="true" data-mp="ann">Announcements</button>
-    <button type="button" role="tab" aria-selected="false" data-mp="acc">Parent access</button>
+    <button type="button" role="tab" aria-selected="true" data-mp="acc">Parent access</button>
     <button type="button" role="tab" aria-selected="false" data-mp="sec">Grades &amp; sections</button>
   </div>
 
-  <div class="mpanel" id="mp-ann">
-    <p class="row"><button class="btn" id="openBc" type="button">+ Add announcement</button></p>
-    <div id="bcList"></div>
-    <div class="modal" id="bcModal" role="dialog" aria-modal="true" aria-labelledby="bcModalTitle" hidden>
-      <div class="modal-box">
-        <strong id="bcModalTitle" class="mh">Announce to all parents</strong>
-        <p class="note">Appears in every parent's Tap-In app right away. Use it for urgent notices such as class suspensions.</p>
-        <label for="bcTitle">Title (optional)</label><input id="bcTitle" maxlength="100" autocomplete="off" placeholder="School announcement">
-        <label for="bcBody">Message</label><textarea id="bcBody" maxlength="1000" placeholder="Due to the weather conditions, there will be no classes tomorrow because of the typhoon."></textarea>
-        <p class="row" style="margin-top:12px"><button class="btn" id="bcSend" type="button">Send to all parents</button><button class="btn alt" id="bcCancel" type="button">Cancel</button></p>
-      </div>
-    </div>
-  </div>
-
-  <div class="mpanel" id="mp-acc" hidden>
+  <div class="mpanel" id="mp-acc">
     <div class="card">
       <strong>Parent access</strong>
       <label class="chk"><input type="checkbox" id="parentEditChk"> Let parents edit their contact details (mobile number and alternate contact)</label>
@@ -701,11 +713,14 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
   <button role="tab" aria-selected="false" data-tab="myclass" hidden>My Class</button>
   <button role="tab" aria-selected="true" data-tab="tap">Tap</button>
   <button role="tab" aria-selected="false" data-tab="kids">Children</button>
+  <button role="tab" aria-selected="false" data-tab="requests">Requests<span class="nbadge" id="reqBadge" hidden></span></button>
   <button role="tab" aria-selected="false" data-tab="log">Log</button>
   <button role="tab" aria-selected="false" data-tab="inside">Inside<span class="nbadge" id="inBadge" hidden></span></button>
   <button role="tab" aria-selected="false" data-tab="visitors">Visitors<span class="nbadge" id="visBadge" hidden></span></button>
   <button role="tab" aria-selected="false" data-tab="sf2">SF2</button>
   <button role="tab" aria-selected="false" data-tab="school">School</button>
+  <button role="tab" aria-selected="false" data-tab="announce" id="navAnnounce" hidden>Announcement</button>
+  <button role="tab" aria-selected="false" data-tab="tv" id="navTv" hidden>TV Display</button>
   <button role="tab" aria-selected="false" data-tab="manage" id="navManage" hidden>Manage</button>
   <button role="tab" aria-selected="false" data-tab="staff" id="navStaff" hidden>Staff</button>
 </nav>
@@ -763,9 +778,9 @@ onAuthStateChanged(auth,async user=>{
   if(user){let ok=false;try{const sd=await getDoc(doc(db,'staff',user.uid));ok=sd.exists();if(ok){myRole=sd.data().role||'staff';mySecs=sd.data().sections||[];myName=sd.data().name||''}admin=ok&&myRole==='admin'}catch(e){}
     if(ok&&myRole==='display'){$('loginMsg').textContent='This account is for the TV screen. Open display.html on the TV instead.';signOut(auth);return}
     if(!ok){$('loginMsg').textContent='This account is not a staff account. Check the staff document in Firestore: its Document ID must be the User UID of this account.';signOut(auth);return}$('loginMsg').textContent=''}
-  $('login').hidden=!!user;document.body.classList.toggle('is-login',!user);$('app').hidden=!user;$('nav').hidden=!user;$('outBtn').hidden=!user;$('pwBtn').hidden=!user;if(!user)$('pwCard').hidden=true;$('navStaff').hidden=!admin;$('navManage').hidden=!admin;
+  $('login').hidden=!!user;document.body.classList.toggle('is-login',!user);$('app').hidden=!user;$('nav').hidden=!user;$('outBtn').hidden=!user;$('pwBtn').hidden=!user;if(!user)$('pwCard').hidden=true;$('navStaff').hidden=!admin;$('navManage').hidden=!admin;$('navAnnounce').hidden=!admin;$('navTv').hidden=!admin;
   if(!user)return;
-  const vis={dashboard:myRole==='admin'||myRole==='head',myclass:myRole==='adviser',tap:myRole!=='adviser'&&myRole!=='head',kids:myRole==='admin'||myRole==='staff',log:true,inside:true,visitors:myRole!=='adviser',sf2:myRole!=='gate',school:myRole!=='gate'};
+  const vis={dashboard:myRole==='admin'||myRole==='head',myclass:myRole==='adviser',tap:myRole!=='adviser'&&myRole!=='head',kids:myRole==='admin'||myRole==='staff',requests:myRole==='admin'||myRole==='staff',log:true,inside:true,visitors:myRole!=='adviser',sf2:myRole!=='gate',school:myRole!=='gate'};
   Object.entries(vis).forEach(([t,v])=>document.querySelector('nav [data-tab='+t+']').hidden=!v);
   document.body.classList.toggle('role-head',myRole==='head');
   lockSchool();lockSfLogos(myRole==='head');
@@ -1587,7 +1602,7 @@ function renderDashboard(){
   const dt=$('sfDismiss').value,due=!!dt&&new Date().getHours()*60+new Date().getMinutes()>=toMin(dt),nc=kids.filter(k=>!k.uid).length,items=[];
   const it=(go,cls,t)=>`<button type="button" class="dbat ${cls}" data-go="${go}"><span>${t}</span><span aria-hidden="true">&rsaquo;</span></button>`;
   if(due&&inside)items.push(it('inside','bad',`${inside} still inside after dismissal`));
-  if(myRole==='admin'&&reqList.length)items.push(it('kids','warn',`${reqList.length} parent change ${reqList.length===1?'request':'requests'}`));
+  if(myRole==='admin'&&reqList.length)items.push(it('requests','warn',`${reqList.length} parent change ${reqList.length===1?'request':'requests'}`));
   if(nc)items.push(it('kids','',`${nc} ${nc===1?'student has':'students have'} no card`));
   if(visOpen.length)items.push(it('visitors','',`${visOpen.length} ${visOpen.length===1?'visitor':'visitors'} inside`));
   $('dbAttn').innerHTML=`<div class="dbh">Needs attention</div>`+(items.join('')||'<p class="note">Nothing needs attention right now.</p>');
@@ -1708,7 +1723,7 @@ $('addStaff').onclick=async()=>{
   }catch(e){toast(e.code==='auth/email-already-in-use'?'That email already has an account. Use a different email.':'Could not add staff ('+(e.code||e.message)+').')}
   finally{try{await signOut(auth2)}catch(x){}}};
 
-// --- Manage tab: switch between Announcements / Parent access / Grades & sections
+// --- Manage tab: switch between Parent access / Grades & sections
 document.querySelectorAll('[data-mp]').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('[data-mp]').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
   document.querySelectorAll('.mpanel').forEach(p=>p.hidden=p.id!=='mp-'+b.dataset.mp)});
@@ -1716,18 +1731,24 @@ document.querySelectorAll('[data-mp]').forEach(b=>b.onclick=()=>{
 let bcList=[];
 function openBc(){$('bcModal').hidden=false;document.body.classList.add('modal-open');$('bcModal').firstElementChild.scrollTop=0;setTimeout(()=>$('bcTitle').focus(),50)}
 function closeBc(){$('bcModal').hidden=true;document.body.classList.remove('modal-open')}
+$('bcAud').onchange=()=>{$('bcUntilBox').hidden=$('bcAud').value==='parents'};
 $('openBc').onclick=openBc;$('bcCancel').onclick=closeBc;
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('bcModal').hidden)closeBc()});
 function renderBc(){
-  $('bcList').innerHTML=bcList.length?'<strong>Recent broadcasts</strong>'+bcList.map(b=>`<div class="card"><div class="row"><strong>${esc(b.title||'School announcement')}</strong><span class="note">${new Date(b.time).toLocaleString('en-PH',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</span></div><p style="white-space:pre-wrap;margin:6px 0">${esc(b.body)}</p><button class="btn alt sm" data-bd="${b.id}">Delete</button></div>`).join(''):'';
+  $('bcList').innerHTML=bcList.length?'<strong>Recent broadcasts</strong>'+bcList.map(b=>`<div class="card"><div class="row"><strong>${esc(b.title||'School announcement')}</strong><span class="note">${new Date(b.time).toLocaleString('en-PH',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</span></div><div class="note">${b.audience==='parents'?'Parents only':b.audience==='tv'?'TV only':'Parents and TV'}${b.tvUntil&&b.audience!=='parents'?' | TV until '+new Date(b.tvUntil).toLocaleString('en-PH',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):''}</div><p style="white-space:pre-wrap;margin:6px 0">${esc(b.body)}</p><button class="btn alt sm" data-bd="${b.id}">Delete</button></div>`).join(''):'';
   document.querySelectorAll('[data-bd]').forEach(b=>b.onclick=()=>{if(confirm('Delete this broadcast? Parents will no longer see it.'))deleteDoc(doc(db,'broadcasts',b.dataset.bd)).catch(()=>toast('Could not delete.'))})}
 $('bcSend').onclick=async()=>{
   const title=$('bcTitle').value.trim()||'School announcement',body=$('bcBody').value.trim();
   if(!body){toast('Write a message first.');return}
-  if(!confirm('Send this to ALL parents now?\n\n'+title+'\n'+body))return;
+  const aud=$('bcAud').value,untilV=$('bcUntil').value,until=aud!=='parents'&&untilV?new Date(untilV).getTime():0;
+  if(until&&until<=Date.now()){toast('The TV end time must be in the future.');return}
+  const who=aud==='parents'?'ALL parents':aud==='tv'?'the TV display':'ALL parents and the TV display';
+  if(!confirm('Send this to '+who+' now?\n\n'+title+'\n'+body))return;
   $('bcSend').disabled=true;
-  try{await addDoc(collection(db,'broadcasts'),{title,body,time:Date.now(),by:auth.currentUser.uid,byEmail:auth.currentUser.email||''});
-    $('bcTitle').value='';$('bcBody').value='';closeBc();toast('Sent to all parents.')}
+  try{const data={title,body,time:Date.now(),audience:aud,by:auth.currentUser.uid,byEmail:auth.currentUser.email||''};
+    if(until)data.tvUntil=until;
+    await addDoc(collection(db,'broadcasts'),data);
+    $('bcTitle').value='';$('bcBody').value='';$('bcAud').value='both';$('bcUntil').value='';$('bcUntilBox').hidden=false;closeBc();toast(aud==='parents'?'Sent to all parents.':aud==='tv'?'Now showing on the TV.':'Sent to all parents and the TV.')}
   catch(e){toast('Could not send ('+(e.code||'error')+').')}
   finally{$('bcSend').disabled=false}};
 
@@ -1738,15 +1759,15 @@ let reqList=[];
     try{await setDoc(doc(db,'settings','school'),{[key]:c.checked},{merge:true});toast(c.checked?on:off)}
     catch(x){c.checked=!c.checked;toast('Could not save the setting.')}}});
 function renderReq(){renderDashboard();
-  const box=$('reqBox');
-  if(!reqList.length){box.innerHTML='';return}
+  const box=$('reqBox'),bd=$('reqBadge');bd.hidden=!reqList.length;bd.textContent=reqList.length;
+  if(!reqList.length){box.innerHTML='<div class="card"><strong>No pending requests</strong><p class="note">Change requests from parents will appear here.</p></div>';return}
   box.innerHTML=`<strong>Change requests from parents (${reqList.length})</strong><p class="note">Make the change with the child's Edit button, then mark the request done.</p>`
    +reqList.map(r=>`<div class="card"><div class="row"><strong>${esc(r.kidName)}</strong><span class="note">${new Date(r.time).toLocaleString('en-PH',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</span></div><div class="note">${esc(r.section||'No section')} | ${esc(r.parentEmail)}</div><p style="white-space:pre-wrap;margin:6px 0">${esc(r.message)}</p><div class="row"><span><button class="btn sm" data-rd="${r.id}">Mark done</button> <button class="btn alt sm" data-rx="${r.id}">Decline</button></span><button class="btn alt sm" data-ro="${r.kidId}">Open child</button></div></div>`).join('');
   const resolve=(id,status)=>{const note=prompt(status==='done'?'Optional note for the parent:':'Reason for declining (the parent will see this):','');if(note===null)return;
     updateDoc(doc(db,'changeRequests',id),{status,note:note.trim().slice(0,300),resolvedBy:auth.currentUser.uid,resolvedTime:Date.now()}).catch(()=>toast('Could not update the request.'))};
   box.querySelectorAll('[data-rd]').forEach(b=>b.onclick=()=>resolve(b.dataset.rd,'done'));
   box.querySelectorAll('[data-rx]').forEach(b=>b.onclick=()=>resolve(b.dataset.rx,'declined'));
-  box.querySelectorAll('[data-ro]').forEach(b=>b.onclick=()=>{const k=kids.find(x=>x.id===b.dataset.ro);if(k)openKid(k);else toast('Child not found.')})}
+  box.querySelectorAll('[data-ro]').forEach(b=>b.onclick=()=>{const k=kids.find(x=>x.id===b.dataset.ro);if(k){showTab('kids');openKid(k)}else toast('Child not found.')})}
 
 // --- Children tab: filter by grade / section / adviser, grouped by section or adviser
 const splitSec=x=>{const a=(x||'').split(' - ');return [a[0],a.slice(1).join(' - ')]};
