@@ -109,6 +109,29 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // A parent reports that their child is not at school even though an arrival was recorded.
+    // Always on (not tied to the change-request switch). Staff who manage children read and close reports.
+    match /childReports/{id} {
+      allow read: if canManage()
+        || (request.auth != null && request.auth.token.email_verified == true
+            && resource.data.parentEmail == request.auth.token.email);
+      allow create: if request.auth != null && request.auth.token.email_verified == true
+        && request.resource.data.keys().hasOnly(['kidId', 'kidName', 'section', 'parentEmail', 'tapTime', 'message', 'time', 'status'])
+        && request.resource.data.parentEmail == request.auth.token.email
+        && request.resource.data.status == 'open'
+        && request.resource.data.kidName is string && request.resource.data.kidName.size() <= 120
+        && request.resource.data.section is string && request.resource.data.section.size() <= 80
+        && request.resource.data.tapTime is number
+        && request.resource.data.message is string && request.resource.data.message.size() <= 300
+        && request.resource.data.time is number
+        && isParent(get(/databases/$(database)/documents/kids/$(request.resource.data.kidId)).data.parentEmails);
+      allow update: if canManage()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'note', 'resolvedBy', 'resolvedTime'])
+        && request.resource.data.status in ['at_school', 'not_at_school']
+        && request.resource.data.get('note', '') is string && request.resource.data.get('note', '').size() <= 300;
+      allow delete: if false;
+    }
+
     match /settings/{id} {
       allow read: if isStaff() || (request.auth != null && request.auth.token.email_verified == true);
       allow create, update: if isAdmin() && id == 'school'
