@@ -385,8 +385,20 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
 .lgbar .sr{grid-column:1/-1;margin:0}
 .lgdate{grid-column:1/-1;display:flex;gap:6px;align-items:center}.lgdate input{flex:1;min-width:0}.lgdate .btn{min-height:48px}
 @media screen and (min-width:1000px){.lgbar{grid-template-columns:minmax(330px,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.3fr)}.lgdate,.lgbar .sr{grid-column:auto}}
-#logTypes{margin-bottom:8px}#logTypes button{padding:6px}
-#logTypes button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.lgopts{display:flex;gap:8px 14px;flex-wrap:wrap;margin-bottom:8px}.lgopts .seg{margin:0;max-width:none;flex:1 1 280px}.lgopts #logTypes{flex-grow:2}
+.lgopts button{padding:6px 4px}
+.lgopts button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.ltag{display:inline-block;font-size:.66rem;font-weight:600;letter-spacing:.04em;padding:0 6px;margin-right:5px;border-radius:99px;line-height:1.5;vertical-align:1px}
+.ltag.late{background:color-mix(in srgb,#c2410c 16%,transparent);color:#b0391b}
+.ltag.noout{background:color-mix(in srgb,#96600a 18%,transparent);color:#96600a}
+.ltag.man{background:color-mix(in srgb,var(--focus) 15%,transparent);color:var(--link)}
+@media (prefers-color-scheme:dark){.ltag.late{color:#f4a07a}.ltag.noout{color:#f2b233}}
+.lgh{font-weight:600;color:var(--mute);margin:12px 2px 6px}
+.lr-new{animation:lrnew 8s ease-out}
+@keyframes lrnew{0%,75%{box-shadow:0 0 0 3px var(--acc);background:color-mix(in srgb,var(--acc) 22%,var(--card))}100%{box-shadow:0 0 0 0 transparent}}
+@media (prefers-reduced-motion:reduce){.lr-new{animation:none;box-shadow:0 0 0 3px var(--acc)}}
+.lkid .lts{display:flex;gap:10px;flex:0 0 auto}.lkid .lts .lt{text-align:center;min-width:3.8em}
+@media screen and (max-width:520px){#logList .lkid{flex-wrap:wrap}.lkid .lts{flex:1 0 100%;padding-left:calc(2.2em + 46px + 16px)}}
 .lt-in b,.lt-back b{color:#0f7a4d}.lt-out b{color:#96600a}.lt-lunch b{color:#b0391b}
 .vprint{display:none}
 @media print{.vprint{display:block;margin-bottom:8px}.vprint h2{margin:0 0 2px;font-size:16px}}
@@ -510,7 +522,10 @@ body.is-login #toast{background:#fff;color:#16323a;box-shadow:0 6px 20px rgba(0,
     <select id="logSec" aria-label="Section"></select>
     <div class="sr"><input id="logQ" type="search" placeholder="Search name" aria-label="Search the log by name" autocomplete="off"><button class="btn alt sm" id="logClear" type="button" hidden>Clear filters</button></div>
   </div>
-  <div class="seg" id="logTypes" role="group" aria-label="Filter by tap type"><button type="button" data-t="" aria-pressed="true">All</button><button type="button" data-t="in" aria-pressed="false">IN</button><button type="button" data-t="lunch" aria-pressed="false">LUNCH</button><button type="button" data-t="back" aria-pressed="false">BACK</button><button type="button" data-t="out" aria-pressed="false">OUT</button></div>
+  <div class="lgopts">
+    <div class="seg" id="logTypes" role="group" aria-label="Filter by tap type"><button type="button" data-t="" aria-pressed="true">All</button><button type="button" data-t="in" aria-pressed="false">IN</button><button type="button" data-t="lunch" aria-pressed="false">LUNCH</button><button type="button" data-t="back" aria-pressed="false">BACK</button><button type="button" data-t="out" aria-pressed="false">OUT</button><button type="button" data-t="late" aria-pressed="false" id="logLateB">LATE</button><button type="button" data-t="noout" aria-pressed="false" id="logNoOutB">NO OUT</button></div>
+    <div class="seg" id="logGroup" role="group" aria-label="Group the list"><button type="button" data-g="tap" aria-pressed="true">Per tap</button><button type="button" data-g="kid" aria-pressed="false">Per child</button><button type="button" data-g="sec" aria-pressed="false">Per section</button></div>
+  </div>
   <div id="logList" class="lg"></div>
 </section>
 
@@ -825,12 +840,12 @@ onAuthStateChanged(auth,async user=>{
   unsub.push(onSnapshot(doc(db,'settings','sf2logos'),s=>applySfLogos(s.exists()?s.data():{},admin,s.exists()),()=>{}));
   unsub.push(onSnapshot(collection(db,'sections'),s=>{secList=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>cmp(a.name,b.name));render();if(myRole==='admin')renderStaff()},()=>toast('Could not load the sections.')));
   const start=new Date();start.setHours(0,0,0,0);
-  logDay=null;dayLogs=[];logType='';
+  logDay=null;dayLogs=[];logType='';logGroup='tap';logSeen=new Set();logSeeded=false;logsLoaded=false;logNew.clear();
   const adv=myRole==='adviser';
   if(adv&&!mySecs.length){kids=[];logs=[];render()}
   else{const sf=adv?[where('section','in',mySecs)]:[];
   unsub.push(onSnapshot(adv?query(collection(db,'kids'),...sf):collection(db,'kids'),s=>{kids=s.docs.map(d=>({id:d.id,...d.data()}));render();if(myRole==='admin'&&staffList.length)renderStaff()},()=>toast('Could not load the list of children.')));
-  unsub.push(onSnapshot(query(collection(db,'log'),...sf,where('time','>=',start.getTime()),orderBy('time')),s=>{logs=s.docs.map(d=>({id:d.id,...d.data()}));render()},()=>toast('Could not load the log. A Firestore index may be needed: open the browser console (F12) and click the link.')))}
+  unsub.push(onSnapshot(query(collection(db,'log'),...sf,where('time','>=',start.getTime()),orderBy('time')),s=>{logs=s.docs.map(d=>({id:d.id,...d.data()}));logsLoaded=true;render()},()=>toast('Could not load the log. A Firestore index may be needed: open the browser console (F12) and click the link.')))}
   if(admin)unsub.push(onSnapshot(query(collection(db,'broadcasts'),orderBy('time','desc')),s=>{bcList=s.docs.slice(0,10).map(d=>({id:d.id,...d.data()}));renderBc()},()=>toast('Could not load past broadcasts.')));
   if(admin)unsub.push(onSnapshot(doc(db,'settings','school'),s=>{const d=s.exists()?s.data():{};$('parentEditChk').checked=!!d.parentEdit;$('parentReqChk').checked=!!d.parentRequests},()=>{}));
   if(myRole==='admin'||myRole==='staff')unsub.push(onSnapshot(query(collection(db,'childReports'),where('status','==','open')),s=>{repList=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>a.time-b.time);renderReq()},()=>toast('Could not load parent reports.')));
@@ -1097,7 +1112,7 @@ function render(){fillSec();renderSecs();renderInside();renderMyClass();renderDa
   if(!$('kdModal').hidden){const k=kids.find(x=>x.id===kdId);if(k)fillKd(k);else closeKd()}
   renderLogTab()}
 // Log list: newest first, filling each column from top to bottom before starting the next column
-let logState={t:[],all:[],num:new Map(),msg:''},logRowH=0,logDay=null,dayLogs=[],logType='',dayTok=0;
+let logState={t:[],all:[],num:new Map(),msg:''},logRowH=0,logDay=null,dayLogs=[],logType='',dayTok=0,logGroup='tap',logSeen=new Set(),logSeeded=false,logsLoaded=false,logNew=new Map(),logNewT=0;
 const spSec=x=>{const a=(x||'').split(' - ');return [a[0],a.slice(1).join(' - ')]};
 function fillLogFilt(V){const g0=$('logGrade').value,s0=$('logSec').value,o=(v,t,on)=>`<option value="${esc(v)}"${on?' selected':''}>${esc(t)}</option>`;
   const names=[...new Set([...secList.map(x=>x.name),...kids.map(k=>k.section),...V.map(l=>l.section)].filter(Boolean))];
@@ -1109,20 +1124,32 @@ function fillLogFilt(V){const g0=$('logGrade').value,s0=$('logSec').value,o=(v,t
 function renderLogTab(){
   const V=logDay?dayLogs:logs,lq=$('logQ').value,[g,sc]=fillLogFilt(V),isToday=!logDay;
   const todayStr=ymd(new Date());if($('logDate').value!==(logDay||todayStr))$('logDate').value=logDay||todayStr;$('logDate').max=todayStr;$('logNext').disabled=isToday;$('logToday').hidden=isToday;
+  // new taps that arrive while this page is open are highlighted for a few seconds
+  if(isToday&&logsLoaded){const first=!logSeeded;logSeeded=true;V.forEach(l=>{if(!logSeen.has(l.id)){logSeen.add(l.id);if(!first)logNew.set(l.id,Date.now())}});
+    if(logNew.size&&!logNewT)logNewT=setTimeout(()=>{logNewT=0;[...logNew].forEach(([i,t])=>{if(Date.now()-t>=8000)logNew.delete(i)});if($('tab-log').classList.contains('on'))renderLogTab()},8200)}
+  // flags: LATE = first IN of the day after the late time; NO OUT = last tap is still an arrival after dismissal
+  const cut=$('sfCut').value||'07:30',dis=$('sfDismiss').value,now=new Date(),flags={},last={},firstIn={};
+  V.forEach(l=>{if(!last[l.kidId]||l.time>=last[l.kidId].time)last[l.kidId]=l;if(l.type==='in'&&(!firstIn[l.kidId]||l.time<firstIn[l.kidId].time))firstIn[l.kidId]=l});
+  Object.values(firstIn).forEach(l=>{const d=new Date(l.time);if(d.getHours()*60+d.getMinutes()>toMin(cut))(flags[l.id]=flags[l.id]||{}).late=1});
+  const dueOut=!isToday||(!!dis&&now.getHours()*60+now.getMinutes()>=toMin(dis));
+  if(dueOut)Object.values(last).forEach(l=>{if(AT(l.type))(flags[l.id]=flags[l.id]||{}).noout=1});
+  const nLate=Object.values(flags).filter(f=>f.late).length,nNo=Object.values(flags).filter(f=>f.noout).length;
+  $('logLateB').textContent='LATE ('+nLate+')';$('logNoOutB').textContent='NO OUT ('+nNo+')';
   const all=[...V].reverse(),filtOn=!!(normQ(lq)||g||sc||logType);
-  const t=all.filter(l=>qMatch(l.name,lq)&&(!g||spSec(l.section)[0]===g)&&(!sc||spSec(l.section)[1]===sc)&&(!logType||l.type===logType));
+  const tm=l=>!logType||(logType==='late'?(flags[l.id]||{}).late:logType==='noout'?(flags[l.id]||{}).noout:l.type===logType);
+  const t=all.filter(l=>qMatch(l.name,lq)&&(!g||spSec(l.section)[0]===g)&&(!sc||spSec(l.section)[1]===sc)&&tm(l));
   $('logClear').hidden=!filtOn;
   document.querySelectorAll('#logTypes button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.t===logType)));
+  document.querySelectorAll('#logGroup button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.g===logGroup)));
   const label=isToday?'Today':new Date(logDay+'T00:00:00').toLocaleDateString('en-PH',{weekday:'short',month:'long',day:'numeric',year:'numeric'});
   $('logHead').textContent=label+' ('+(filtOn?t.length+' of '+all.length:t.length)+')';
   // summary: where each child stands after their last tap of the day
-  const last={};V.forEach(l=>{if(!last[l.kidId]||l.time>=last[l.kidId].time)last[l.kidId]=l});
   const cnt={in:0,lunch:0,out:0};Object.values(last).forEach(l=>{if(AT(l.type))cnt.in++;else if(l.type==='lunch')cnt.lunch++;else cnt.out++});
   const none=Math.max(0,kids.length-kids.filter(k=>last[k.id]).length);
   const tile=(lbl,n,c)=>`<div class="dbs" style="--c:${c}"><div><small>${lbl}</small><b>${n}</b></div></div>`;
   $('logStats').innerHTML=tile('Inside',cnt.in,'var(--ok)')+tile('Out for lunch',cnt.lunch,'#b0391b')+tile('Went home',cnt.out,'#96600a')+tile(isToday?'Not yet in':'No tap',none,'var(--mute)');
   const num=new Map(all.map((l,i)=>[l.id,all.length-i]));
-  logState={t,all,num,msg:all.length?'No taps match your filters.':(isToday?'No taps yet today.':'No taps were recorded on this day.')};renderLogList()}
+  logState={t,all,num,flags,msg:all.length?'No taps match your filters.':(isToday?'No taps yet today.':'No taps were recorded on this day.')};renderLogList()}
 async function setLogDay(v){
   const todayStr=ymd(new Date());if(!v||v>todayStr)v=todayStr;
   if(v===todayStr){logDay=null;dayLogs=[];renderLogTab();return}
@@ -1134,15 +1161,26 @@ async function setLogDay(v){
   catch(e){if(tok===dayTok)toast('Could not load that day. A Firestore index may be needed: open the browser console (F12) and click the link.')}}
 const shiftDay=n=>{const d=new Date((logDay||ymd(new Date()))+'T00:00:00');d.setDate(d.getDate()+n);setLogDay(ymd(d))};
 const LB={in:'IN',out:'OUT',lunch:'LUNCH',back:'BACK'};
+function logWho(l){if(!l.manual)return '';const me=auth.currentUser&&auth.currentUser.uid,st=staffList.find(x=>x.id===l.by),nm=l.by&&l.by===me?'you':(st&&st.name)||'';return nm}
+function logTags(l,f){const w=logWho(l);return (f.late?'<span class="ltag late">LATE</span>':'')+(f.noout?'<span class="ltag noout">NO OUT</span>':'')+(l.manual?`<span class="ltag man" title="Checked in by hand${w?' by '+esc(w):''}">MANUAL</span>`:'')}
 function renderLogList(){
-  const {t,all,num,msg}=logState,box=$('logList');
+  const {t,all,num,msg,flags}=logState,box=$('logList');
   if(!t.length){box.innerHTML=`<p class="note">${msg}</p>`;return}
-  const rows=t.map(l=>`<div class="card lr"><span class="ln">${num.get(l.id)}</span>${av(kids.find(k=>k.id===l.kidId)||{name:l.name})}<div class="lm"><strong>${esc(l.name)}</strong><small>${esc(l.section||'')}${l.manual?' | Manual':''}</small></div><span class="lt lt-${LB[l.type]?l.type:'out'}"><b>${LB[l.type]||'OUT'}</b>${fmt(l.time)}</span></div>`);
-  const w=box.clientWidth||Math.max(280,innerWidth-(innerWidth>=1000?290:32)),cols=Math.max(1,Math.floor((w+10)/290)),
-    top=box.getBoundingClientRect().top+scrollY,R=Math.max(6,Math.floor((innerHeight-top-70)/(logRowH||58))),size=R*cols,out=[];
-  for(let i=0;i<rows.length;i+=size){const part=rows.slice(i,i+size);out.push(`<div class="lchunk" style="--c:${cols};--r:${Math.min(R,part.length)}">${part.join('')}</div>`)}
-  box.innerHTML=out.join('');
-  const c=box.querySelector('.lr');if(c&&c.offsetHeight){const h=c.offsetHeight+6;if(Math.abs(h-logRowH)>3){logRowH=h;renderLogList()}}}
+  const isNew=l=>logNew.has(l.id)&&Date.now()-logNew.get(l.id)<8000,F=l=>flags[l.id]||{};
+  const rowTap=l=>{const w=logWho(l);return `<div class="card lr${isNew(l)?' lr-new':''}"><span class="ln">${num.get(l.id)}</span>${av(kids.find(k=>k.id===l.kidId)||{name:l.name})}<div class="lm"><strong>${esc(l.name)}</strong><small>${logTags(l,F(l))}${esc(l.section||'')}${w?' \u00b7 by '+esc(w):''}</small></div><span class="lt lt-${LB[l.type]?l.type:'out'}"><b>${LB[l.type]||'OUT'}</b>${fmt(l.time)}</span></div>`};
+  const kidGroups=a=>{const m=new Map();a.forEach(l=>{if(!m.has(l.kidId))m.set(l.kidId,[]);m.get(l.kidId).push(l)});return [...m.values()]};
+  const rowKid=(arr,i)=>{const s=[...arr].sort((x,y)=>x.time-y.time),f={late:s.some(l=>F(l).late),noout:s.some(l=>F(l).noout)},man=s.find(l=>l.manual),w=man?logWho(man):'',l0=s[0];
+    return `<div class="card lr lkid${s.some(isNew)?' lr-new':''}"><span class="ln">${i+1}</span>${av(kids.find(k=>k.id===l0.kidId)||{name:l0.name})}<div class="lm"><strong>${esc(l0.name)}</strong><small>${logTags(man||{},f)}${esc(l0.section||'')}${w?' \u00b7 by '+esc(w):''}</small></div><div class="lts">${s.map(l=>`<span class="lt lt-${LB[l.type]?l.type:'out'}"><b>${LB[l.type]||'OUT'}</b>${fmt(l.time)}</span>`).join('')}</div></div>`};
+  const colW=logGroup==='kid'?400:290,w=box.clientWidth||Math.max(280,innerWidth-(innerWidth>=1000?290:32)),cols=Math.max(1,Math.floor((w+10)/colW)),
+    top=box.getBoundingClientRect().top+scrollY,R=Math.max(6,Math.floor((innerHeight-top-70)/(logRowH||58))),size=R*cols;
+  const chunk=rows=>{const out=[];for(let i=0;i<rows.length;i+=size){const part=rows.slice(i,i+size);out.push(`<div class="lchunk" style="--c:${cols};--r:${Math.min(R,part.length)}">${part.join('')}</div>`)}return out.join('')};
+  let html;
+  if(logGroup==='kid')html=chunk(kidGroups(t).map(rowKid));
+  else if(logGroup==='sec'){const m=new Map();t.forEach(l=>{const k=l.section||'No section';if(!m.has(k))m.set(k,[]);m.get(k).push(l)});
+    html=[...m.keys()].sort(cmp).map(k=>`<div class="lgh">${esc(k)} (${kidGroups(m.get(k)).length} ${kidGroups(m.get(k)).length===1?'child':'children'})</div>`+chunk(m.get(k).map(rowTap))).join('')}
+  else html=chunk(t.map(rowTap));
+  box.innerHTML=html;
+  const c=box.querySelector('.lr');if(c&&c.offsetHeight){const h=c.offsetHeight+6;if(Math.abs(h-logRowH)>3&&logGroup!=='kid'){logRowH=h;renderLogList()}}}
 {let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{if($('tab-log').classList.contains('on'))renderLogList()},200)})}
 // --- Inside tab: who is still inside school, with a warning once the dismissal check time is reached
 const t12=v=>{const [h,m]=String(v).split(':').map(Number);return (h%12||12)+':'+String(m).padStart(2,'0')+' '+(h<12?'AM':'PM')};
@@ -1167,6 +1205,7 @@ function renderInside(){
 setInterval(renderInside,30000);
 $('logQ').oninput=()=>renderLogTab();
 $('logGrade').onchange=()=>{$('logSec').value='';renderLogTab()};$('logSec').onchange=()=>renderLogTab();
+$('logGroup').onclick=e=>{const b=e.target.closest('button');if(!b)return;logGroup=b.dataset.g;renderLogTab()};
 $('logTypes').onclick=e=>{const b=e.target.closest('button');if(!b)return;logType=b.dataset.t;renderLogTab()};
 $('logClear').onclick=()=>{$('logQ').value='';$('logGrade').value='';$('logSec').value='';logType='';renderLogTab()};
 $('logDate').onchange=e=>setLogDay(e.target.value);$('logPrev').onclick=()=>shiftDay(-1);$('logNext').onclick=()=>shiftDay(1);$('logToday').onclick=()=>setLogDay('');
@@ -1189,7 +1228,7 @@ $('simBtn').onclick=async()=>{
   recordTap(k,true)};
 
 $('csvBtn').onclick=()=>{
-  const rows=['Name,Section,Type,Time,Method'].concat([...logState.t].reverse().map(l=>`"${l.name}","${l.section||''}",${tl(l.type)},${new Date(l.time).toLocaleString('en-PH')},${l.manual?'Manual':'Card'}`)).join('\n');
+  const fl=logState.flags||{},rows=['Name,Section,Type,Time,Method,Flags'].concat([...logState.t].reverse().map(l=>`"${l.name}","${l.section||''}",${tl(l.type)},${new Date(l.time).toLocaleString('en-PH')},${l.manual?'Manual':'Card'},${[(fl[l.id]||{}).late&&'Late',(fl[l.id]||{}).noout&&'No OUT'].filter(Boolean).join(' / ')}`)).join('\n');
   navigator.clipboard&&navigator.clipboard.writeText(rows).then(()=>toast('CSV copied'),()=>toast('Could not copy'))};
 
 // --- manage grades and sections (admins)
