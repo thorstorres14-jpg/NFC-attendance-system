@@ -275,6 +275,13 @@ function renderStats(){
   $('stInS').textContent='of '+kidIds.size+' enrolled';
   $('stOutS').textContent=lunch?'Home '+home+' \u00b7 Lunch '+lunch:'Already left school today';
 }
+let bcDocs=[],annTimer=null;
+// newest announcement meant for the TV (not parents-only) that has not expired yet
+function pickAnnounce(){
+  const now=Date.now(),d=bcDocs.find(x=>x.audience!=='parents'&&(x.tvUntil?now<x.tvUntil:now-x.time<ANNOUNCE_DAYS*864e5));
+  const next=d?{title:d.title||'',body:d.body||''}:null;
+  if(JSON.stringify(next)!==JSON.stringify(announce)){announce=next;renderBanner()}
+}
 function renderBanner(){
   const nm=school.name||'Welcome',ann=announce?(announce.title?announce.title+': ':'')+announce.body.replace(/\s+/g,' '):'';
   const unit=`<span class="bn">${esc(nm)}</span>`+(ann?`<span class="bd">•</span><span>${esc(ann)}</span>`:'')+'<span class="bd">•</span>';
@@ -403,11 +410,10 @@ function start(){
     const n=s.docs.filter(x=>x.data().timeOut===0).length;
     $('stVis').textContent=n;$('stVisS').textContent=n?'inside now':'None inside';
   },()=>{}));
-  unsubs.push(onSnapshot(query(collection(db,'broadcasts'),orderBy('time','desc'),limit(1)),s=>{
-    const d=s.docs[0]&&s.docs[0].data();
-    announce=d&&Date.now()-d.time<ANNOUNCE_DAYS*864e5?{title:d.title||'',body:d.body||''}:null;
-    renderBanner();
+  unsubs.push(onSnapshot(query(collection(db,'broadcasts'),orderBy('time','desc'),limit(10)),s=>{
+    bcDocs=s.docs.map(x=>x.data());pickAnnounce();
   },()=>{}));
+  clearInterval(annTimer);annTimer=setInterval(pickAnnounce,60000);
   unsubs.push(onSnapshot(
     query(collection(db,'log'),where('time','>=',d0.getTime()),orderBy('time','desc'),limit(3000)),
     {includeMetadataChanges:true},
