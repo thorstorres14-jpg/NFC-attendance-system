@@ -60,10 +60,12 @@ service cloud.firestore {
     match /broadcasts/{id} {
       allow read: if isStaff() || (request.auth != null && request.auth.token.email_verified == true);
       allow create: if isAdmin()
-        && request.resource.data.keys().hasOnly(['title', 'body', 'time', 'by', 'byEmail'])
+        && request.resource.data.keys().hasOnly(['title', 'body', 'time', 'by', 'byEmail', 'audience', 'tvUntil'])
         && request.resource.data.title is string && request.resource.data.title.size() <= 100
         && request.resource.data.body is string && request.resource.data.body.size() > 0 && request.resource.data.body.size() <= 1000
         && request.resource.data.time is number
+        && request.resource.data.get('audience', 'both') in ['both', 'parents', 'tv']
+        && request.resource.data.get('tvUntil', 0) is number
         && request.resource.data.by == request.auth.uid;
       allow update: if false;
       allow delete: if isAdmin();
