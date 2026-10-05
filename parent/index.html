@@ -283,7 +283,7 @@ function start(user){$('pwBtn').hidden=false;
     s=>{allLogs=s.docs.map(d=>d.data());render(allLogs);renderReport()},
     err=>toast('Could not load the records ('+(err.code||'error')+').'));
   unsubB=onSnapshot(query(collection(db,'broadcasts'),orderBy('time','desc'),limit(10)),
-    s=>renderAnn(s.docs.map(d=>({id:d.id,...d.data()}))),()=>{});
+    s=>renderAnn(s.docs.map(d=>({id:d.id,...d.data()})).filter(b=>b.audience!=='tv')),()=>{});
   const em=user.email.toLowerCase();
   unsubC=[
     onSnapshot(query(collection(db,'kids'),where('parentEmails','array-contains',em)),s=>{kidsReady=true;myKids=s.docs.map(d=>({id:d.id,...d.data()}));renderContacts();if(allLogs)render(allLogs);renderReport()},()=>{}),
